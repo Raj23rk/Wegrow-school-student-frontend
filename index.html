@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WeGrow Skill Campus &amp; B School | Student Portal &amp; Learning Ecosystem</title>
+    <meta name="description" content="WeGrow Skill Campus &amp; B School Next-Gen Student Portal with real-time attendance, live classes, quizzes with automated parent WhatsApp/Email alerts, secure syllabus, notes and payments." />
+    <link rel="icon" type="image/webp" href="/wegrow-logo.webp" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Nunito:wght@600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+    <!-- Tailwind CSS for Landing Sections -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              navy: '#0B1F4D',
+              'navy-light': '#3A4560',
+              orange: '#F26A1B',
+              'orange-dark': '#E5530A',
+              'orange-light': '#FFE9D9',
+              cream: '#FFF8EF',
+              peach: '#FFE3C7',
+              sky: '#CFE6F7',
+              yellow: '#FFC21A',
+              green: '#2E9E5B',
+              blue: '#2F6FD6',
+              'blue-light': '#4D8DF0',
+              'blue-tint': '#EEF5FF',
+              'orange-tint': '#FFF3EA',
+              'green-tint': '#EEF8F1',
+              'purple-tint': '#F1EFFC',
+              purple: '#8B3FD9',
+            },
+            fontFamily: {
+              nunito: ['"Nunito"', 'sans-serif'],
+              caveat: ['"Caveat"', 'cursive'],
+              outfit: ['"Outfit"', 'sans-serif'],
+            },
+            boxShadow: {
+              'card': '0 10px 25px -4px rgba(242, 106, 27, 0.12), 0 6px 12px -3px rgba(242, 106, 27, 0.08)',
+              'card-hover': '0 18px 32px -4px rgba(242, 106, 27, 0.20), 0 8px 14px -3px rgba(242, 106, 27, 0.10)',
+              'cta': '0 10px 24px -3px rgba(242, 106, 27, 0.38)',
+              'cta-hover': '0 16px 30px -3px rgba(242, 106, 27, 0.50)',
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
