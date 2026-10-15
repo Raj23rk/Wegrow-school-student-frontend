@@ -1,7 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('wegrow_theme_v2');
+          document.documentElement.setAttribute('data-theme', saved === 'wegrow' || saved === 'midnight' ? saved : 'light');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WeGrow Skill Campus &amp; B School | Student Portal &amp; Learning Ecosystem</title>
     <meta name="description" content="WeGrow Skill Campus &amp; B School Next-Gen Student Portal with real-time attendance, live classes, quizzes with automated parent WhatsApp/Email alerts, secure syllabus, notes and payments." />

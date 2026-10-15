@@ -189,7 +189,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
     motherPhone: '',
     email: '',
     totalFees: 45000,
-    paidFees: 30000,
+    paidFees: 0,
   });
   const [studentCreating, setStudentCreating] = useState(false);
   const [studentSuccessMsg, setStudentSuccessMsg] = useState('');
@@ -205,6 +205,22 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
 
   // Notification Templates & Bulk Broadcast
   const [templatesList, setTemplatesList] = useState<any[]>([
+    {
+      id: 'tmpl_credentials',
+      title: 'Student Portal Login Credentials (Username & Password)',
+      category: 'Credentials',
+      channel: 'both',
+      subject: 'Student Portal Login Credentials - {studentName} | WeGrow Campus',
+      templateBody: '🎓 WeGrow Skill Campus - Student Portal Login Credentials\n\nDear {fatherName} & {studentName},\n\nWelcome to WeGrow Skill Campus! Your Student Learning Portal account has been activated.\n\n🔑 Login Credentials:\n• Student Name: {studentName}\n• Username / Roll No: {username}\n• Password: {password}\n• Email: {email}\n• Batch / Course: {className}\n\n🌐 Portal Login Link:\nhttps://school.wegrowbschool.in/#login\n\n💡 Quick Steps:\n1. Click the portal link above\n2. Enter Username ({username}) & Password ({password})\n3. Access interactive AI labs, daily notes, video lectures, and live attendance.\n\nPlease keep your credentials safe.',
+    },
+    {
+      id: 'tmpl_fee_receipt',
+      title: 'Fee Payment Receipt & Login Access',
+      category: 'Fees',
+      channel: 'both',
+      subject: 'Fee Payment Receipt: {studentName} | WeGrow Skill Campus',
+      templateBody: '💳 WeGrow Skill Campus - Fee Payment Receipt\n\nDear {fatherName},\n\nWe acknowledge receipt of fee payment for {studentName} ({rollNumber}).\n\n💰 Fee Summary:\n• Course: {className}\n• Total Course Fee: INR ₹{totalFees}\n• Amount Paid: INR ₹{paidFees}\n• Pending Balance Due: INR ₹{dueFees}\n\n🔑 Student Portal Login:\n• Username: {username}\n• Password: {password}\n• Portal URL: https://school.wegrowbschool.in/#login\n\nThank you for choosing WeGrow Skill Campus.',
+    },
     {
       id: 'tmpl_01',
       title: 'Daily Attendance Absence Alert',
@@ -400,10 +416,13 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
   };
 
   const copyStudentCredentials = (student: any) => {
-    const credText = `WeGrow Student Portal Credentials:\nEnrollment ID: ${student.rollNumber}\nPassword: ${student.password || `${student.rollNumber}@2026`}\nPortal URL: ${window.location.origin}/portal`;
+    const roll = student.rollNumber || 'WG26-001';
+    const pwd = student.password || `${roll}@2026`;
+    const credText = `WeGrow Student Portal Credentials:\nStudent: ${student.name || 'Student'}\nUsername: ${roll}\nPassword: ${pwd}\nLogin URL: ${window.location.origin}/#login`;
     navigator.clipboard.writeText(credText);
-    const key = student.id || student._id;
+    const key = student.id || student._id || roll;
     setCopiedRollId(key);
+    toast.success(`Copied login credentials for ${student.name || roll}!`, 'Credentials Copied');
     setTimeout(() => setCopiedRollId(null), 2500);
   };
 
@@ -415,6 +434,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
           ...prev,
           rollNumber: res.nextRollNumber,
           password: res.defaultPassword || `${res.nextRollNumber}@2026`,
+          paidFees: 0,
         }));
       }
     } catch (err) {
@@ -428,6 +448,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
         ...prev,
         rollNumber: next,
         password: `${next}@2026`,
+        paidFees: 0,
       }));
     }
     setIsNewStudentModalOpen(true);
@@ -516,7 +537,6 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       });
 
       setAttendanceSuccessMsg(res.message);
-      toast.success('Attendance saved successfully! Absentee notifications dispatched.', 'Attendance Saved');
       if (res.dispatchedAlerts?.length > 0 && onNotificationSent) {
         onNotificationSent({
           score: res.dispatchedAlerts.length,
@@ -532,6 +552,8 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
             details: 'Attendance log recorded in campus registry.',
           },
         });
+      } else {
+        toast.success(res.message || 'Attendance saved successfully! Absentee notifications dispatched.', 'Attendance Saved');
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to save attendance', 'Attendance Error');
@@ -721,7 +743,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
           motherPhone: '',
           email: '',
           totalFees: 45000,
-          paidFees: 30000,
+          paidFees: 0,
         });
       } catch {
         // Fallback
@@ -756,9 +778,10 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
   };
 
   // 9. Apply Notification Template to Direct Student Notice
-  const handleApplyDirectTemplate = (tmplId: string) => {
+  const handleApplyDirectTemplate = (tmplId: string, customStudent?: any) => {
     setDirectNotifyTemplateId(tmplId);
-    if (!tmplId || !notifyingStudent) return;
+    const target = customStudent || notifyingStudent;
+    if (!tmplId || !target) return;
     const found = templatesList.find((t) => t.id === tmplId || t._id === tmplId);
     if (!found) return;
 
@@ -766,35 +789,57 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       setNotifyChannel(found.channel as any);
     }
 
-    const sName = notifyingStudent.name || 'Student';
-    const sRoll = notifyingStudent.rollNumber || 'WG26-001';
-    const sClass = notifyingStudent.grade || notifyingStudent.className || 'AI & GenAI Master Track';
-    const sSchool = notifyingStudent.schoolName || 'WeGrow Skill Campus';
-    const sFather = notifyingStudent.fatherName || notifyingStudent.parentName || 'Parent';
-    const sMother = notifyingStudent.motherName || 'Guardian';
-    const sDue = notifyingStudent.dueFees !== undefined ? notifyingStudent.dueFees : (Number(notifyingStudent.totalFees || 45000) - Number(notifyingStudent.paidFees || 30000));
+    const sName = target.name || 'Student';
+    const sRoll = target.rollNumber || 'WG26-001';
+    const sClass = target.grade || target.className || 'AI & GenAI Master Track';
+    const sSchool = target.schoolName || 'WeGrow Skill Campus';
+    const sFather = target.fatherName || target.parentName || 'Father';
+    const sMother = target.motherName || 'Mother';
+    const sParent = (target.fatherName && target.motherName && target.fatherName !== target.motherName)
+      ? `${target.fatherName} & ${target.motherName}`
+      : (target.fatherName || target.parentName || target.motherName || 'Parent');
+    const sEmail = target.email || target.parentEmail || '';
+    const sUsername = sRoll;
+    const sPassword = target.password || `${sRoll}@2026`;
+    const sTotalNum = target.totalFees !== undefined ? Number(target.totalFees) : 45000;
+    const sPaidNum = target.paidFees !== undefined ? Number(target.paidFees) : 0;
+    const sDue = target.dueFees !== undefined ? target.dueFees : Math.max(0, sTotalNum - sPaidNum);
     const sDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
     let interpolatedSubject = found.subject || `Update regarding ${sName}`;
     interpolatedSubject = interpolatedSubject
-      .replace(/{studentName}/g, sName)
-      .replace(/{student_name}/g, sName)
-      .replace(/{rollNumber}/g, sRoll)
-      .replace(/{className}/g, sClass)
-      .replace(/{schoolName}/g, sSchool);
+      .replace(/{studentName}/gi, sName)
+      .replace(/{student_name}/gi, sName)
+      .replace(/{rollNumber}/gi, sRoll)
+      .replace(/{username}/gi, sUsername)
+      .replace(/{className}/gi, sClass)
+      .replace(/{schoolName}/gi, sSchool)
+      .replace(/{parentName}/gi, sParent)
+      .replace(/{parent_name}/gi, sParent)
+      .replace(/{fatherName}/gi, sFather)
+      .replace(/{motherName}/gi, sMother);
 
     let interpolatedBody = found.templateBody || found.customMessage || '';
     interpolatedBody = interpolatedBody
-      .replace(/{studentName}/g, sName)
-      .replace(/{student_name}/g, sName)
-      .replace(/{rollNumber}/g, sRoll)
-      .replace(/{roll_no}/g, sRoll)
-      .replace(/{className}/g, sClass)
-      .replace(/{schoolName}/g, sSchool)
-      .replace(/{fatherName}/g, sFather)
-      .replace(/{motherName}/g, sMother)
-      .replace(/{dueFees}/g, String(sDue))
-      .replace(/{date}/g, sDate);
+      .replace(/{studentName}/gi, sName)
+      .replace(/{student_name}/gi, sName)
+      .replace(/{rollNumber}/gi, sRoll)
+      .replace(/{roll_no}/gi, sRoll)
+      .replace(/{username}/gi, sUsername)
+      .replace(/{password}/gi, sPassword)
+      .replace(/{email}/gi, sEmail)
+      .replace(/{totalFees}/gi, sTotalNum.toLocaleString('en-IN'))
+      .replace(/{paidFees}/gi, sPaidNum.toLocaleString('en-IN'))
+      .replace(/{dueFees}/gi, sDue.toLocaleString('en-IN'))
+      .replace(/{className}/gi, sClass)
+      .replace(/{schoolName}/gi, sSchool)
+      .replace(/{parentName}/gi, sParent)
+      .replace(/{parent_name}/gi, sParent)
+      .replace(/{fatherName}/gi, sFather)
+      .replace(/{motherName}/gi, sMother)
+      .replace(/{date}/gi, sDate)
+      .replace(/https:\/\/wegrowskillcampus\.edu\/portal/gi, 'https://school.wegrowbschool.in/#login')
+      .replace(/\*/g, ''); // Remove stars (asterisks) for clean notification content
 
     setNotifySubject(interpolatedSubject);
     setNotifyMessage(interpolatedBody);
@@ -815,7 +860,6 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       });
       const successStr = res.message || 'Notification dispatched successfully to student parents via official API.';
       setNotifySuccessMsg(successStr);
-      toast.success(successStr, 'Notification Sent');
       if (onNotificationSent) {
         onNotificationSent({
           score: 1,
@@ -831,6 +875,8 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
             details: notifySubject,
           },
         });
+      } else {
+        toast.success(successStr, 'Notification Sent');
       }
       setTimeout(() => {
         setNotifyingStudent(null);
@@ -913,7 +959,6 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       const count = res.dispatchedCount || studentsList.length;
       const successStr = res.message || `Broadcast successfully delivered to ${count} parents via ${bulkChannel.toUpperCase()} API!`;
       setBulkSuccessMsg(successStr);
-      toast.success(successStr, 'Broadcast Dispatched');
 
       setBulkBroadcastHistory((prev) => [
         {
@@ -943,6 +988,8 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
             details: bulkCustomSubject,
           },
         });
+      } else {
+        toast.success(successStr, 'Broadcast Dispatched');
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to dispatch bulk broadcast', 'Broadcast Failed');
@@ -2533,9 +2580,15 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                   <label className="input-label">Payment Amount (INR)</label>
                   <input
                     type="number"
+                    min="1"
                     required
-                    value={payAmount}
-                    onChange={(e) => setPayAmount(Number(e.target.value))}
+                    placeholder="0"
+                    value={payAmount === 0 ? '' : payAmount}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPayAmount(v === '' ? 0 : Number(v));
+                    }}
                     className="input-field"
                   />
                 </div>
@@ -2798,57 +2851,102 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
 
                     return (
                       <tr key={studentKey} style={{ borderBottom: '1px solid var(--border-glass)', transition: 'background 0.15s ease' }}>
-                        {/* Student Name, Roll & Admin Password */}
-                        <td style={{ padding: '14px' }}>
-                          <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>
+                        {/* Student Name, Username & Login Password */}
+                        <td style={{ padding: '14px', minWidth: '220px' }}>
+                          <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14.5px', letterSpacing: '-0.01em' }}>
                             {s.name}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                padding: '2px 7px',
-                                borderRadius: '4px',
-                                background: 'rgba(37, 99, 235, 0.15)',
-                                color: 'var(--primary-light)',
-                                fontFamily: 'monospace',
-                                letterSpacing: '0.5px',
-                              }}
-                            >
-                              {s.rollNumber || 'WG26-001'}
-                            </span>
 
-                            {/* Password Box with Show/Hide & Copy */}
-                            <div
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                border: '1px solid var(--border-glass)',
-                              }}
-                            >
-                              <span style={{ fontSize: '10.5px', fontFamily: 'monospace', color: isPwdVisible ? 'var(--brand-orange)' : 'var(--text-muted)' }}>
-                                {isPwdVisible ? pwdDisplay : '••••••••'}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px' }}>
+                            {/* Username row */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                              <span style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>User:</span>
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 800,
+                                  padding: '2px 8px',
+                                  borderRadius: '5px',
+                                  background: 'rgba(37, 99, 235, 0.15)',
+                                  color: 'var(--primary-light)',
+                                  fontFamily: 'monospace',
+                                  letterSpacing: '0.5px',
+                                  border: '1px solid rgba(37, 99, 235, 0.25)',
+                                }}
+                              >
+                                {s.rollNumber || 'WG26-001'}
                               </span>
                               <button
                                 type="button"
-                                onClick={() => togglePasswordVisibility(studentKey)}
-                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '1px', display: 'flex', alignItems: 'center' }}
-                                title={isPwdVisible ? 'Hide Password' : 'Show Password'}
+                                onClick={() => {
+                                  navigator.clipboard.writeText(s.rollNumber || 'WG26-001');
+                                  toast.success(`Copied Username: ${s.rollNumber || 'WG26-001'}`, 'Copied');
+                                }}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                title="Copy Username / Roll No"
                               >
-                                {isPwdVisible ? <EyeOff size={11} /> : <Eye size={11} />}
+                                <Copy size={11} />
                               </button>
+                            </div>
+
+                            {/* Password row */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                              <span style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pass:</span>
+                              <div
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  background: 'rgba(242, 106, 27, 0.1)',
+                                  padding: '2px 8px',
+                                  borderRadius: '5px',
+                                  border: '1px solid rgba(242, 106, 27, 0.25)',
+                                }}
+                              >
+                                <span style={{ fontSize: '11px', fontFamily: 'monospace', color: isPwdVisible ? 'var(--brand-orange)' : 'var(--text-muted)', fontWeight: 700 }}>
+                                  {isPwdVisible ? pwdDisplay : '••••••••'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => togglePasswordVisibility(studentKey)}
+                                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '1px', display: 'flex', alignItems: 'center' }}
+                                  title={isPwdVisible ? 'Hide Password' : 'Show Password'}
+                                >
+                                  {isPwdVisible ? <EyeOff size={11} /> : <Eye size={11} />}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(pwdDisplay);
+                                    toast.success(`Copied Password: ${pwdDisplay}`, 'Copied');
+                                  }}
+                                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '1px', display: 'flex', alignItems: 'center' }}
+                                  title="Copy Password"
+                                >
+                                  <Copy size={11} />
+                                </button>
+                              </div>
+
                               <button
                                 type="button"
                                 onClick={() => copyStudentCredentials(s)}
-                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: isCopied ? '#34d399' : 'var(--text-muted)', padding: '1px', display: 'flex', alignItems: 'center' }}
-                                title="Copy Enrollment ID & Password to Clipboard"
+                                style={{
+                                  background: isCopied ? 'rgba(52, 211, 153, 0.15)' : 'var(--bg-glass)',
+                                  border: isCopied ? '1px solid #34d399' : '1px solid var(--border-glass)',
+                                  color: isCopied ? '#34d399' : 'var(--text-secondary)',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                }}
+                                title="Copy both Username & Password formatted for sending"
                               >
-                                {isCopied ? <Check size={11} /> : <Copy size={11} />}
+                                {isCopied ? <Check size={10} /> : <Copy size={10} />}
+                                <span>{isCopied ? 'Copied' : 'Both'}</span>
                               </button>
                             </div>
                           </div>
@@ -2909,14 +3007,12 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                             <button
                               onClick={() => {
                                 setNotifyingStudent(s);
-                                setDirectNotifyTemplateId('');
                                 setNotifyChannel('whatsapp');
-                                setNotifySubject(`Update regarding ${s.name}`);
-                                setNotifyMessage(`Dear ${father} & ${mother},\nThis is an official academic update regarding ${s.name} from WeGrow Skill Campus.`);
+                                handleApplyDirectTemplate('tmpl_credentials', s);
                               }}
                               className="btn btn-secondary btn-sm"
                               style={{ padding: '5px 8px', fontSize: '11.5px', gap: '4px', color: '#25D366' }}
-                              title="Send WhatsApp Notification to Parents"
+                              title="Send WhatsApp Notification with Credentials / Fee to Parents"
                             >
                               <MessageCircle size={13} />
                               <span>WhatsApp</span>
@@ -3724,8 +3820,14 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                   </label>
                   <input
                     type="number"
-                    value={newStudent.totalFees}
-                    onChange={(e) => setNewStudent({ ...newStudent, totalFees: Number(e.target.value) })}
+                    min="0"
+                    placeholder="e.g. 45000"
+                    value={newStudent.totalFees === 0 ? '' : newStudent.totalFees}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setNewStudent({ ...newStudent, totalFees: v === '' ? 0 : Number(v) });
+                    }}
                     className="input-field"
                     style={{ width: '100%' }}
                   />
@@ -3738,8 +3840,14 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                   </label>
                   <input
                     type="number"
-                    value={newStudent.paidFees}
-                    onChange={(e) => setNewStudent({ ...newStudent, paidFees: Number(e.target.value) })}
+                    min="0"
+                    placeholder="0"
+                    value={newStudent.paidFees === 0 ? '' : newStudent.paidFees}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setNewStudent({ ...newStudent, paidFees: v === '' ? 0 : Number(v) });
+                    }}
                     className="input-field"
                     style={{ width: '100%' }}
                   />
@@ -3885,6 +3993,70 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                     ⚡ Auto-fills message &amp; channel
                   </span>
                 </div>
+
+                {/* Quick Selection Template Badges */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyDirectTemplate('tmpl_credentials')}
+                    style={{
+                      fontSize: '11px',
+                      padding: '4px 9px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      border: directNotifyTemplateId === 'tmpl_credentials' ? '1.5px solid var(--brand-orange)' : '1px solid var(--border-glass)',
+                      background: directNotifyTemplateId === 'tmpl_credentials' ? 'rgba(242, 106, 27, 0.15)' : 'var(--bg-glass)',
+                      color: directNotifyTemplateId === 'tmpl_credentials' ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <span>🔑 Student Credentials (User &amp; Pass)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleApplyDirectTemplate('tmpl_fee_receipt')}
+                    style={{
+                      fontSize: '11px',
+                      padding: '4px 9px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      border: directNotifyTemplateId === 'tmpl_fee_receipt' ? '1.5px solid #10b981' : '1px solid var(--border-glass)',
+                      background: directNotifyTemplateId === 'tmpl_fee_receipt' ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-glass)',
+                      color: directNotifyTemplateId === 'tmpl_fee_receipt' ? '#10b981' : 'var(--text-secondary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <span>💳 Fee Receipt &amp; Login</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleApplyDirectTemplate('tmpl_02')}
+                    style={{
+                      fontSize: '11px',
+                      padding: '4px 9px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      border: directNotifyTemplateId === 'tmpl_02' ? '1.5px solid #38bdf8' : '1px solid var(--border-glass)',
+                      background: directNotifyTemplateId === 'tmpl_02' ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-glass)',
+                      color: directNotifyTemplateId === 'tmpl_02' ? '#38bdf8' : 'var(--text-secondary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <span>⏳ Fee Due Alert</span>
+                  </button>
+                </div>
+
                 <select
                   value={directNotifyTemplateId}
                   onChange={(e) => handleApplyDirectTemplate(e.target.value)}
@@ -3978,7 +4150,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                   Message Content
                 </label>
                 <textarea
-                  rows={4}
+                  rows={6}
                   value={notifyMessage}
                   onChange={(e) => setNotifyMessage(e.target.value)}
                   className="input-field"
@@ -3987,15 +4159,46 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => setNotifyingStudent(null)}
                   className="btn btn-secondary"
-                  style={{ padding: '8px 18px' }}
+                  style={{ padding: '8px 16px' }}
                 >
                   Cancel
                 </button>
+
+                {/* Direct WhatsApp Web / App Link */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const rawPhone = notifyingStudent.fatherPhone || notifyingStudent.parentWhatsApp || notifyingStudent.motherPhone || '';
+                    const cleanPhone = rawPhone.replace(/[^\d]/g, '');
+                    const phoneWithCountry = cleanPhone.startsWith('91') ? cleanPhone : (cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone);
+                    const waUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(notifyMessage)}`;
+                    window.open(waUrl, '_blank');
+                  }}
+                  className="btn"
+                  style={{
+                    padding: '8px 16px',
+                    fontWeight: 700,
+                    background: '#25D366',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)',
+                  }}
+                  title="Open chat in WhatsApp Web or Mobile App"
+                >
+                  <MessageCircle size={15} />
+                  <span>Open in WhatsApp</span>
+                </button>
+
                 <button
                   type="submit"
                   disabled={notifySending}

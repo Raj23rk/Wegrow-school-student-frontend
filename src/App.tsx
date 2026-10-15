@@ -60,18 +60,18 @@ export function App() {
       window.history.replaceState({}, document.title, cleanUrl);
     };
 
-    // 3. Hash change listener: handles direct navigation, #admin, and tab synchronization
-    const handleHashChange = () => {
-      const rawHash = window.location.hash.toLowerCase().replace(/^#/, '');
-      if (!rawHash) return;
+    // 3. Route change listener: handles HTML5 direct paths (/admin), hash routes (#admin), and tab synchronization
+    const handleRouteChange = () => {
+      const route = getNormalizedRoute();
+      if (!route) return;
 
-      if (rawHash === 'login') {
+      if (route === 'login') {
         setPublicView('login');
         return;
       }
 
-      // Check if user is navigating to admin route (#admin or #admin-*)
-      if (rawHash === 'admin' || rawHash.startsWith('admin-')) {
+      // Check if user is navigating to admin route (/admin, #admin, /admin-*, #admin-*)
+      if (route === 'admin' || route.startsWith('admin-') || route === 'admincontrolcenter') {
         const token = getAuthToken();
         if (!token) {
           setPublicView('login');
@@ -89,8 +89,8 @@ export function App() {
           'admin-whatsapp',
           'admin-templates',
         ];
-        if (validAdminTabs.includes(rawHash as TabType)) {
-          setCurrentTab(rawHash as TabType);
+        if (validAdminTabs.includes(route as TabType)) {
+          setCurrentTab(route as TabType);
         } else {
           setCurrentTab('admin');
         }
@@ -108,22 +108,24 @@ export function App() {
         'payments',
         'profile',
       ];
-      if (validStudentTabs.includes(rawHash as TabType)) {
+      if (validStudentTabs.includes(route as TabType)) {
         const token = getAuthToken();
         if (!token) {
           setPublicView('login');
           return;
         }
-        setCurrentTab(rawHash as TabType);
+        setCurrentTab(route as TabType);
       }
     };
 
     window.addEventListener('auth:session_closed', handleSessionClosed);
-    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('hashchange', handleRouteChange);
+    window.addEventListener('popstate', handleRouteChange);
 
     return () => {
       window.removeEventListener('auth:session_closed', handleSessionClosed);
-      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('hashchange', handleRouteChange);
+      window.removeEventListener('popstate', handleRouteChange);
     };
   }, []);
 
@@ -141,8 +143,24 @@ export function App() {
     }
   }, [loadingInitial, student, publicView]);
 
+const getNormalizedRoute = (): string => {
+  const rawHash = (typeof window !== 'undefined' ? window.location.hash : '')
+    .toLowerCase()
+    .replace(/^#\/?/, '')
+    .trim();
+  const rawPath = (typeof window !== 'undefined' ? window.location.pathname : '')
+    .toLowerCase()
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '')
+    .trim();
+
+  if (rawHash) return rawHash;
+  if (rawPath && rawPath !== 'index.html') return rawPath;
+  return '';
+};
+
   const checkSession = async () => {
-    const rawHash = window.location.hash.toLowerCase().replace(/^#/, '');
+    const route = getNormalizedRoute();
 
     // 1. Capture token passed via URL parameter if any
     const urlParams = new URLSearchParams(window.location.search);
@@ -163,7 +181,7 @@ export function App() {
     // If no active session token exists in sessionStorage:
     if (!token) {
       setStudent(null);
-      if (rawHash === 'login' || rawHash === 'admin' || rawHash.startsWith('admin')) {
+      if (route === 'login' || route === 'admin' || route.startsWith('admin')) {
         setPublicView('login');
       } else {
         setPublicView('landing');
@@ -179,7 +197,7 @@ export function App() {
         setStudent(res.student);
         const isAdmin = res.student.role === 'admin';
 
-        if (rawHash === 'admin' || rawHash.startsWith('admin-')) {
+        if (route === 'admin' || route.startsWith('admin-') || route === 'admincontrolcenter') {
           if (isAdmin) {
             const validAdminTabs: TabType[] = [
               'admin',
@@ -193,7 +211,7 @@ export function App() {
               'admin-whatsapp',
               'admin-templates',
             ];
-            setCurrentTab(validAdminTabs.includes(rawHash as TabType) ? (rawHash as TabType) : 'admin');
+            setCurrentTab(validAdminTabs.includes(route as TabType) ? (route as TabType) : 'admin');
           } else {
             setCurrentTab('dashboard');
             window.location.hash = 'dashboard';
@@ -208,9 +226,9 @@ export function App() {
             'assignments',
             'payments',
             'profile',
-          ].includes(rawHash)
+          ].includes(route)
         ) {
-          setCurrentTab(rawHash as TabType);
+          setCurrentTab(route as TabType);
         } else if (isAdmin) {
           setCurrentTab('admin');
           window.location.hash = 'admin';
@@ -224,7 +242,7 @@ export function App() {
     } catch {
       clearAuthSession();
       setStudent(null);
-      if (rawHash === 'login' || rawHash === 'admin' || rawHash.startsWith('admin')) {
+      if (route === 'login' || route === 'admin' || route.startsWith('admin')) {
         setPublicView('login');
       } else {
         setPublicView('landing');
@@ -238,15 +256,15 @@ export function App() {
 
   const handleLoginSuccess = (loggedInStudent: Student) => {
     setStudent(loggedInStudent);
-    const rawHash = window.location.hash.toLowerCase().replace(/^#/, '');
+    const route = getNormalizedRoute();
 
     if (loggedInStudent.role === 'admin') {
-      const target = rawHash.startsWith('admin') ? (rawHash as TabType) : 'admin';
+      const target = (route.startsWith('admin') ? route : 'admin') as TabType;
       setCurrentTab(target);
       window.location.hash = target;
     } else {
-      const target = ['dashboard', 'syllabus', 'videos', 'quizzes', 'materials', 'assignments', 'payments', 'profile'].includes(rawHash)
-        ? (rawHash as TabType)
+      const target = ['dashboard', 'syllabus', 'videos', 'quizzes', 'materials', 'assignments', 'payments', 'profile'].includes(route)
+        ? (route as TabType)
         : 'dashboard';
       setCurrentTab(target);
       window.location.hash = target;
@@ -274,39 +292,159 @@ export function App() {
           alignItems: 'center',
           justifyContent: 'center',
           minHeight: '100vh',
-          background: '#FFF8EF',
+          background: 'radial-gradient(circle at 50% 35%, #FFF8EF 0%, #FFF1E2 60%, #FAEDE0 100%)',
           padding: '24px',
+          fontFamily: "'Outfit', 'Inter', -apple-system, sans-serif",
         }}
       >
-        <div style={{ textAlign: 'center' }}>
-          <img
-            src="/wegrow-logo.webp"
-            alt="WeGrow Skill Campus & B School"
-            width={180}
-            height={48}
-            style={{
-              height: '48px',
-              width: 'auto',
-              margin: '0 auto 18px',
-              display: 'block',
-              objectFit: 'contain',
-            }}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = '/logo copy.png';
-            }}
-          />
+        <div
+          style={{
+            textAlign: 'center',
+            maxWidth: '400px',
+            width: '100%',
+            background: 'rgba(255, 255, 255, 0.92)',
+            backdropFilter: 'blur(20px)',
+            border: '1.5px solid rgba(242, 106, 27, 0.22)',
+            boxShadow: '0 25px 50px rgba(11, 31, 77, 0.12), 0 0 35px rgba(242, 106, 27, 0.08)',
+            borderRadius: '24px',
+            padding: '38px 30px',
+            animation: 'modalPopIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          {/* WeGrow Official Brand Logo */}
+          <div style={{ marginBottom: '24px' }}>
+            <img
+              src="/wegrow-logo.webp"
+              alt="WeGrow Skill Campus & B School"
+              width={200}
+              height={52}
+              style={{
+                height: '50px',
+                width: 'auto',
+                display: 'block',
+                margin: '0 auto',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 4px 10px rgba(11, 31, 77, 0.1))',
+              }}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = '/logo copy.png';
+              }}
+            />
+          </div>
+
+          {/* Luxury Dual-Ring Orbital Spinner */}
           <div
-            className="pulse-indicator"
             style={{
-              width: '20px',
-              height: '20px',
-              margin: '0 auto 16px',
-              background: '#F26A1B',
+              position: 'relative',
+              width: '64px',
+              height: '64px',
+              margin: '0 auto 22px',
             }}
-          />
-          <p style={{ color: '#0B1F4D', fontSize: '15px', fontWeight: 700 }}>
-            Loading WeGrow Skill Campus &amp; B School...
+          >
+            {/* Outer Orange Ring */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '50%',
+                border: '3.5px solid transparent',
+                borderTopColor: '#F26A1B',
+                borderRightColor: '#F26A1B',
+                animation: 'spin 0.9s linear infinite',
+              }}
+            />
+            {/* Inner Navy Ring */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: '8px',
+                borderRadius: '50%',
+                border: '3px solid transparent',
+                borderBottomColor: '#0B1F4D',
+                borderLeftColor: '#0B1F4D',
+                animation: 'spin 1.4s linear infinite reverse',
+              }}
+            />
+            {/* Pulsing Core Spark */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: '22px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #F26A1B, #FFC21A)',
+                boxShadow: '0 0 12px rgba(242, 106, 27, 0.7)',
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            />
+          </div>
+
+          {/* Heading & Status Text */}
+          <h3
+            style={{
+              color: '#0B1F4D',
+              fontSize: '17px',
+              fontWeight: 800,
+              margin: '0 0 5px',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            Loading WeGrow Skill Campus
+          </h3>
+          <p
+            style={{
+              color: '#64748B',
+              fontSize: '13px',
+              fontWeight: 600,
+              margin: '0 0 18px',
+            }}
+          >
+            Initializing verified academic portal...
           </p>
+
+          {/* Animated Shimmer Bar */}
+          <div
+            style={{
+              width: '100%',
+              height: '4px',
+              background: '#F1F5F9',
+              borderRadius: '9999px',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: '45%',
+                background: 'linear-gradient(90deg, #F26A1B 0%, #FFC21A 50%, #0B1F4D 100%)',
+                borderRadius: '9999px',
+                animation: 'shimmerSlide 1.8s ease-in-out infinite',
+              }}
+            />
+          </div>
+
+          {/* Sivakasi Campus AI Badge */}
+          <div
+            style={{
+              marginTop: '20px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 12px',
+              borderRadius: '9999px',
+              background: 'rgba(242, 106, 27, 0.08)',
+              border: '1px solid rgba(242, 106, 27, 0.22)',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#E5530A',
+              letterSpacing: '0.4px',
+            }}
+          >
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+            SIVAKASI CAMPUS &bull; AI LAB
+          </div>
         </div>
       </div>
     );

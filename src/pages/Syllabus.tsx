@@ -23,17 +23,18 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { SyllabusItem, Student, SyllabusModule } from '../types';
+import { AI_COURSE_SYLLABUS } from '../data/aiSyllabusData';
 
 interface SyllabusProps {
   student: Student | null;
 }
 
 export const Syllabus: React.FC<SyllabusProps> = ({ student }) => {
-  const [phases, setPhases] = useState<SyllabusItem[]>([]);
+  const [phases, setPhases] = useState<SyllabusItem[]>(AI_COURSE_SYLLABUS as any);
   const [selectedPhaseId, setSelectedPhaseId] = useState<string>('phase_1');
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'Code' | 'No-code'>('all');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'deep' | 'matrix'>('deep');
 
   useEffect(() => {
@@ -46,10 +47,13 @@ export const Syllabus: React.FC<SyllabusProps> = ({ student }) => {
       const res = await api.getSyllabus();
       if (res.data && res.data.length > 0) {
         setPhases(res.data);
-        setSelectedPhaseId(res.data[0].id);
+        if (!selectedPhaseId) setSelectedPhaseId(res.data[0].id);
+      } else {
+        setPhases(AI_COURSE_SYLLABUS as any);
       }
     } catch (err) {
-      console.error('Failed to load syllabus:', err);
+      console.warn('Using local AI syllabus catalog fallback');
+      setPhases(AI_COURSE_SYLLABUS as any);
     } finally {
       setLoading(false);
     }

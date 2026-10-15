@@ -15,7 +15,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenProfile,
   onLogout,
 }) => {
-  const [currentTheme, setCurrentTheme] = useState<'wegrow' | 'midnight' | 'light'>('wegrow');
+  const [currentTheme, setCurrentTheme] = useState<'wegrow' | 'midnight' | 'light'>('light');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -31,9 +31,9 @@ export const Header: React.FC<HeaderProps> = ({
       setCurrentTheme(saved);
       document.documentElement.setAttribute('data-theme', saved);
     } else {
-      setCurrentTheme('wegrow');
-      document.documentElement.setAttribute('data-theme', 'wegrow');
-      localStorage.setItem('wegrow_theme_v2', 'wegrow');
+      setCurrentTheme('light');
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('wegrow_theme_v2', 'light');
     }
   }, []);
 

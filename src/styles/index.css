@@ -4,7 +4,18 @@
    High-Contrast Luxury • Glassmorphism • Dynamic Micro-animations
    ===================================================================== */
 
-:root,
+:root {
+  /* Global Layout Dimensions (Active on all themes & screen formats) */
+  --sidebar-width: 270px;
+  --header-height: 70px;
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+}
+
 [data-theme='dark'],
 [data-theme='wegrow'],
 [data-theme='midnight'] {
@@ -92,7 +103,8 @@
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Campus Executive Light Theme */
+/* Campus Executive Light Theme (Default) */
+:root,
 [data-theme='light'] {
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
@@ -152,6 +164,12 @@
   --chart-tooltip-bg: #ffffff;
   --chart-tooltip-border: #cbd5e1;
   --chart-tooltip-text: #0f172a;
+
+  /* Layout dimensions */
+  --sidebar-width: 270px;
+  --header-height: 70px;
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Reset & Base */
@@ -1161,5 +1179,33 @@ select.input-field option {
 .brand-logo-container:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.2);
+}
+
+/* 10. Notification Toast Progress Bar & Animation */
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes shimmerSlide {
+  0% {
+    left: -45%;
+  }
+  50% {
+    left: 40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* 11. Table Vertical Alignment & Proportions */
+.admin-table th,
+.admin-table td {
+  vertical-align: middle;
 }
 

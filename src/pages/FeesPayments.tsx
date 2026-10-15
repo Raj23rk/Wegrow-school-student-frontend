@@ -11,14 +11,27 @@ interface FeesProps {
 
 export const FeesPayments: React.FC<FeesProps> = ({ student, onRefreshStudent }) => {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
-  const [feeStats, setFeeStats] = useState({
-    totalFees: student?.totalFees || 45000,
-    paidFees: student?.paidFees || 30000,
-    dueFees: student?.dueFees || 15000,
-  });
+
+  const resolveFees = (resData?: any) => {
+    const sTotal = student?.totalFees !== undefined && Number(student.totalFees) > 0 ? Number(student.totalFees) : 45000;
+    const sPaid = student?.paidFees !== undefined ? Number(student.paidFees) : 0;
+    const sDue = student?.dueFees !== undefined ? Number(student.dueFees) : Math.max(0, sTotal - sPaid);
+
+    const total = (resData?.totalFees && Number(resData.totalFees) > 0) ? Number(resData.totalFees) : sTotal;
+    const paid = (resData?.paidFees !== undefined && Number(resData.paidFees) > 0) ? Number(resData.paidFees) : sPaid;
+    const due = (resData?.dueFees !== undefined && Number(resData.dueFees) > 0) ? Number(resData.dueFees) : Math.max(0, total - paid);
+
+    return { totalFees: total, paidFees: paid, dueFees: due };
+  };
+
+  const [feeStats, setFeeStats] = useState(resolveFees());
   const [isRazorpayOpen, setIsRazorpayOpen] = useState(false);
   const [recentReceipt, setRecentReceipt] = useState<any | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
+
+  useEffect(() => {
+    setFeeStats(resolveFees());
+  }, [student]);
 
   useEffect(() => {
     fetchHistory();
@@ -27,14 +40,13 @@ export const FeesPayments: React.FC<FeesProps> = ({ student, onRefreshStudent })
   const fetchHistory = async () => {
     try {
       const res = await api.getPaymentHistory();
-      setPayments(res.data.payments);
-      setFeeStats({
-        totalFees: res.data.totalFees,
-        paidFees: res.data.paidFees,
-        dueFees: res.data.dueFees,
-      });
+      if (res.data?.payments) {
+        setPayments(res.data.payments);
+      }
+      setFeeStats(resolveFees(res.data));
     } catch (err) {
       console.error('Failed to load payment history:', err);
+      setFeeStats(resolveFees());
     }
   };
 
