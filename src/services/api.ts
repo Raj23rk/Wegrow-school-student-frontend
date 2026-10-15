@@ -1,10 +1,21 @@
 const getApiBase = (): string => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL;
-  if (!envUrl) {
+  const envUrl =
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_BACKEND_URL;
+
+  if (envUrl && envUrl.trim()) {
+    const cleanUrl = envUrl.trim().replace(/\/+$/, '');
+    return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+  }
+
+  // If in Vite dev server mode without explicit URL, use proxy '/api'
+  if (import.meta.env.DEV) {
     return '/api';
   }
-  const cleanUrl = envUrl.trim().replace(/\/+$/, '');
-  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+
+  // In production (Vercel / live deployment), fallback to live backend API to prevent 404
+  return 'https://wegrow-school-backend.onrender.com/api';
 };
 
 const API_BASE = getApiBase();
