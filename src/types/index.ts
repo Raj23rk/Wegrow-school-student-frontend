@@ -17,6 +17,8 @@ export interface Student {
   totalFees: number;
   paidFees: number;
   dueFees: number;
+  feePlan?: string;
+  feeType?: string;
 }
 
 export interface AttendanceRecord {

@@ -44,6 +44,85 @@ export type AdminTab =
   | 'whatsapp'
   | 'templates';
 
+export interface RegistrationFeePlan {
+  id: 'full_payment' | 'half_payment' | 'term_payment';
+  number: string;
+  title: string;
+  subtitle: string;
+  totalFees: number;
+  badge: string;
+  badgeColor: string;
+  badgeBg: string;
+  borderColor: string;
+  breakdown: string;
+  feeType: string;
+  schedule: string;
+  presets: { label: string; amount: number }[];
+}
+
+export const REGISTRATION_FEE_PLANS: RegistrationFeePlan[] = [
+  {
+    id: 'full_payment',
+    number: '1',
+    title: 'Full Payment',
+    subtitle: 'One-Time Settlement',
+    totalFees: 43000,
+    badge: 'SAVE ₹2,000 (₹43,000)',
+    badgeColor: '#10B981',
+    badgeBg: 'rgba(16, 185, 129, 0.14)',
+    borderColor: '#10B981',
+    breakdown: '1 Full Payment of ₹43,000',
+    feeType: 'Full Payment Plan (₹43,000 One-Time)',
+    schedule: 'Single settlement (Saved ₹2,000 vs standard ₹45,000)',
+    presets: [
+      { label: '₹0 (Unpaid)', amount: 0 },
+      { label: '₹1,000 (Prebooking)', amount: 1000 },
+      { label: '₹43,000 (Full Paid)', amount: 43000 },
+    ],
+  },
+  {
+    id: 'half_payment',
+    number: '2',
+    title: '2 Half Payment',
+    subtitle: '2 Equal Installments',
+    totalFees: 45000,
+    badge: 'SPLIT ₹22,500 × 2',
+    badgeColor: '#38BDF8',
+    badgeBg: 'rgba(56, 189, 248, 0.14)',
+    borderColor: '#38BDF8',
+    breakdown: '₹45,000 split into 2 installments of ₹22,500 each',
+    feeType: '2 Half Payment Plan (2 × ₹22,500 = ₹45,000)',
+    schedule: 'Installment 1: ₹22,500 • Installment 2: ₹22,500',
+    presets: [
+      { label: '₹0 (Unpaid)', amount: 0 },
+      { label: '₹1,000 (Prebooking)', amount: 1000 },
+      { label: '₹22,500 (1st Half)', amount: 22500 },
+      { label: '₹45,000 (Full Paid)', amount: 45000 },
+    ],
+  },
+  {
+    id: 'term_payment',
+    number: '3',
+    title: 'Term Payment',
+    subtitle: '3 Equal Terms (45k / 3)',
+    totalFees: 45000,
+    badge: '3 × ₹15,000 (TERM PLAN)',
+    badgeColor: '#A855F7',
+    badgeBg: 'rgba(168, 85, 247, 0.14)',
+    borderColor: '#A855F7',
+    breakdown: '₹45,000 / 3 = 3 equal term payments of ₹15,000 each',
+    feeType: 'Term Payment Plan (3 × ₹15,000 = ₹45,000)',
+    schedule: 'Term 1: ₹15,000 • Term 2: ₹15,000 • Term 3: ₹15,000',
+    presets: [
+      { label: '₹0 (Unpaid)', amount: 0 },
+      { label: '₹1,000 (Prebooking)', amount: 1000 },
+      { label: '₹15,000 (Term 1)', amount: 15000 },
+      { label: '₹30,000 (Term 1+2)', amount: 30000 },
+      { label: '₹45,000 (Full Paid)', amount: 45000 },
+    ],
+  },
+];
+
 export const ADMIN_STUDENTS: any[] = [];
 
 export const SEED_DATA = {
@@ -78,12 +157,14 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
     if (onSelectSubTab) onSelectSubTab(tab);
   };
 
-  // State for Batch Attendance
+  // State for Batch Attendance & Daily Analytics
   const [selectedBatch, setSelectedBatch] = useState('Cohort Alpha (12-Month Diploma)');
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [attendanceSuccessMsg, setAttendanceSuccessMsg] = useState('');
+  const [dailyStatsSummary, setDailyStatsSummary] = useState<any>(null);
+  const [dailyAttendanceHistory, setDailyAttendanceHistory] = useState<any[]>([]);
 
   // State for Assignment Upload
   const [asgTitle, setAsgTitle] = useState('');
@@ -176,7 +257,23 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
   const [showPasswordIds, setShowPasswordIds] = useState<Record<string, boolean>>({});
   const [copiedRollId, setCopiedRollId] = useState<string | null>(null);
 
-  const [newStudent, setNewStudent] = useState({
+  const [newStudent, setNewStudent] = useState<{
+    name: string;
+    rollNumber: string;
+    password: string;
+    className: string;
+    schoolName: string;
+    batch: string;
+    fatherName: string;
+    motherName: string;
+    fatherPhone: string;
+    motherPhone: string;
+    email: string;
+    feePlan: 'full_payment' | 'half_payment' | 'term_payment';
+    feeType: string;
+    totalFees: number;
+    paidFees: number;
+  }>({
     name: '',
     rollNumber: 'WG26-001',
     password: 'WG26-001@2026',
@@ -188,9 +285,28 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
     fatherPhone: '',
     motherPhone: '',
     email: '',
-    totalFees: 45000,
+    feePlan: 'full_payment',
+    feeType: 'Full Payment Plan (₹43,000 One-Time)',
+    totalFees: 43000,
     paidFees: 0,
   });
+
+  const handleSelectRegistrationFeePlan = (planId: 'full_payment' | 'half_payment' | 'term_payment') => {
+    const selected = REGISTRATION_FEE_PLANS.find((p) => p.id === planId) || REGISTRATION_FEE_PLANS[0];
+    setNewStudent((prev) => ({
+      ...prev,
+      feePlan: selected.id,
+      feeType: selected.feeType,
+      totalFees: selected.totalFees,
+    }));
+  };
+
+  const handleSetInitialPaidFeePreset = (amount: number) => {
+    setNewStudent((prev) => ({
+      ...prev,
+      paidFees: amount,
+    }));
+  };
   const [studentCreating, setStudentCreating] = useState(false);
   const [studentSuccessMsg, setStudentSuccessMsg] = useState('');
 
@@ -502,11 +618,24 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
     }
   };
 
+  const loadDailyAttendanceStats = async (batch = selectedBatch) => {
+    try {
+      const res = await api.getDailyAttendanceStats({ batch, days: 30 });
+      if (res.success) {
+        setDailyStatsSummary(res.summary);
+        setDailyAttendanceHistory(res.data || []);
+      }
+    } catch (err) {
+      console.warn('Daily attendance stats fallback:', err);
+    }
+  };
+
   const loadAttendance = async (batch = selectedBatch, date = attendanceDate) => {
     try {
       setLoading(true);
       const res = await api.getBatchAttendance(batch, date);
       if (res.success) setAttendanceRecords(res.records);
+      loadDailyAttendanceStats(batch);
     } catch (err) {
       console.warn('Attendance load fallback');
     } finally {
@@ -537,6 +666,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       });
 
       setAttendanceSuccessMsg(res.message);
+      loadDailyAttendanceStats(selectedBatch);
       if (res.dispatchedAlerts?.length > 0 && onNotificationSent) {
         onNotificationSent({
           score: res.dispatchedAlerts.length,
@@ -707,21 +837,24 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       const res = await api.createStudent(newStudent);
       const assignedRoll = res.student?.rollNumber || newStudent.rollNumber || 'WG26-001';
       const assignedPassword = res.student?.password || newStudent.password || `${assignedRoll}@2026`;
-      const created = res.student || {
-        id: 'std_' + Date.now(),
+      const created = {
         ...newStudent,
+        ...(res.student || {}),
+        id: res.student?.id || res.student?._id || 'std_' + Date.now(),
         rollNumber: assignedRoll,
         password: assignedPassword,
         grade: newStudent.className,
         parentName: newStudent.fatherName,
         parentEmail: newStudent.email,
         parentWhatsApp: newStudent.fatherPhone,
+        feePlan: newStudent.feePlan || 'full_payment',
+        feeType: newStudent.feeType || 'Full Payment Plan (₹43,000 One-Time)',
         dueFees: Number(newStudent.totalFees) - Number(newStudent.paidFees),
         status: 'active',
         attendanceRate: 100,
       };
       setStudentsList((prev) => [created, ...prev]);
-      const successStr = `Student "${newStudent.name}" enrolled successfully! Roll No: ${assignedRoll} | Password: ${assignedPassword}`;
+      const successStr = `Student "${newStudent.name}" enrolled successfully! Roll No: ${assignedRoll} | Fee Plan: ${created.feePlan === 'full_payment' ? 'Full Payment (₹43,000)' : created.feePlan === 'half_payment' ? '2-Half Payment (₹45,000 Split)' : 'Term Payment (₹45,000 / 3)'}`;
       setStudentSuccessMsg(successStr);
       toast.success(successStr, 'Student Enrolled');
       setIsNewStudentModalOpen(false);
@@ -742,11 +875,27 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
           fatherPhone: '',
           motherPhone: '',
           email: '',
-          totalFees: 45000,
+          feePlan: 'full_payment',
+          feeType: 'Full Payment Plan (₹43,000 One-Time)',
+          totalFees: 43000,
           paidFees: 0,
         });
       } catch {
         // Fallback
+        setNewStudent((prev) => ({
+          ...prev,
+          name: '',
+          schoolName: '',
+          fatherName: '',
+          motherName: '',
+          fatherPhone: '',
+          motherPhone: '',
+          email: '',
+          feePlan: 'full_payment',
+          feeType: 'Full Payment Plan (₹43,000 One-Time)',
+          totalFees: 43000,
+          paidFees: 0,
+        }));
       }
       loadOverview();
     } catch (err: any) {
@@ -831,6 +980,8 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       .replace(/{totalFees}/gi, sTotalNum.toLocaleString('en-IN'))
       .replace(/{paidFees}/gi, sPaidNum.toLocaleString('en-IN'))
       .replace(/{dueFees}/gi, sDue.toLocaleString('en-IN'))
+      .replace(/{feePlan}/gi, target.feePlan || 'Full Payment')
+      .replace(/{feeType}/gi, target.feeType || 'Curriculum Tuition Fee')
       .replace(/{className}/gi, sClass)
       .replace(/{schoolName}/gi, sSchool)
       .replace(/{parentName}/gi, sParent)
@@ -1667,6 +1818,116 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
             >
               {savingAttendance ? 'Saving & Alerting Parents...' : 'Save Attendance & Dispatch WhatsApp to Absent Parents'}
             </button>
+          </div>
+
+          {/* Daily Attendance Analytics & Date-Wise Log Table */}
+          <div className="glass-card" style={{ padding: '24px', marginTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CalendarCheck size={20} style={{ color: 'var(--brand-orange)' }} />
+                  Date-Wise Daily Attendance Analytics
+                </h3>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Official historical attendance logs &amp; automated rate breakdowns
+                </p>
+              </div>
+
+              {dailyStatsSummary && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 700, padding: '4px 10px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.12)', color: 'var(--primary-light)', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
+                    Enrolled: {dailyStatsSummary.totalEnrolled || 1}
+                  </span>
+                  <span style={{ fontSize: '11.5px', fontWeight: 700, padding: '4px 10px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                    Today Present: {dailyStatsSummary.todayPresent ?? 1}
+                  </span>
+                  <span style={{ fontSize: '11.5px', fontWeight: 700, padding: '4px 10px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.12)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                    Today Absent: {dailyStatsSummary.todayAbsent ?? 0}
+                  </span>
+                  <span style={{ fontSize: '11.5px', fontWeight: 800, padding: '4px 10px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.12)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                    Rate: {dailyStatsSummary.todayPercentage ?? 100}%
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', minWidth: '120px' }}>Date</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center', minWidth: '90px' }}>Total</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center', minWidth: '90px' }}>Present</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center', minWidth: '90px' }}>Absent</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center', minWidth: '90px' }}>Late / Excused</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', minWidth: '160px' }}>Attendance %</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center', minWidth: '100px' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dailyAttendanceHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '30px 14px', color: 'var(--text-muted)' }}>
+                        No daily logs recorded yet for {selectedBatch}. Click &ldquo;Save Attendance&rdquo; above to record today&apos;s verified log.
+                      </td>
+                    </tr>
+                  ) : (
+                    dailyAttendanceHistory.map((row: any) => {
+                      const pct = row.attendancePercentage !== undefined ? row.attendancePercentage : 100;
+                      return (
+                        <tr key={row.date} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                          <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {row.date} {row.date === new Date().toISOString().split('T')[0] && <span style={{ fontSize: '10.5px', color: '#10B981', fontWeight: 800 }}>(Today)</span>}
+                          </td>
+                          <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            {row.totalStudents || 1}
+                          </td>
+                          <td style={{ padding: '12px 14px', textAlign: 'center', color: '#10B981', fontWeight: 700 }}>
+                            {row.presentCount || 0}
+                          </td>
+                          <td style={{ padding: '12px 14px', textAlign: 'center', color: row.absentCount > 0 ? '#EF4444' : 'var(--text-muted)', fontWeight: row.absentCount > 0 ? 800 : 500 }}>
+                            {row.absentCount || 0}
+                          </td>
+                          <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            {(row.lateCount || 0) + (row.excusedCount || 0)}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ flex: 1, height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '9999px', overflow: 'hidden' }}>
+                                <div
+                                  style={{
+                                    height: '100%',
+                                    width: `${pct}%`,
+                                    background: pct >= 80 ? 'linear-gradient(90deg, #10B981, #34D399)' : 'linear-gradient(90deg, #F59E0B, #EF4444)',
+                                    borderRadius: '9999px',
+                                  }}
+                                />
+                              </div>
+                              <span style={{ fontSize: '12px', fontWeight: 800, color: pct >= 80 ? '#10B981' : '#F59E0B', minWidth: '36px' }}>
+                                {pct}%
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAttendanceDate(row.date);
+                                loadAttendance(selectedBatch, row.date);
+                              }}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '4px 10px', fontSize: '11px' }}
+                            >
+                              Load Roster
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -2999,6 +3260,68 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                             Paid: ₹{(s.paidFees || 0).toLocaleString('en-IN')}
                           </div>
+                          <div style={{ marginTop: '4px' }}>
+                            {s.feePlan === 'full_payment' || s.totalFees === 43000 ? (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  padding: '2px 6px',
+                                  borderRadius: '5px',
+                                  background: 'rgba(16, 185, 129, 0.12)',
+                                  color: '#10b981',
+                                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                1. Full Pay (₹43k)
+                              </span>
+                            ) : s.feePlan === 'half_payment' ? (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  padding: '2px 6px',
+                                  borderRadius: '5px',
+                                  background: 'rgba(56, 189, 248, 0.12)',
+                                  color: '#38bdf8',
+                                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                2. 2-Half (2×₹22.5k)
+                              </span>
+                            ) : s.feePlan === 'term_payment' ? (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  padding: '2px 6px',
+                                  borderRadius: '5px',
+                                  background: 'rgba(168, 85, 247, 0.12)',
+                                  color: '#a855f7',
+                                  border: '1px solid rgba(168, 85, 247, 0.25)',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                3. Term Pay (3×₹15k)
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: '5px',
+                                  background: 'rgba(255, 255, 255, 0.05)',
+                                  color: 'var(--text-muted)',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                Fee: ₹{(s.totalFees || 45000).toLocaleString('en-IN')}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Actions */}
@@ -3490,7 +3813,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
             className="glass-card"
             style={{
               width: '100%',
-              maxWidth: '680px',
+              maxWidth: '760px',
               maxHeight: '90vh',
               overflowY: 'auto',
               padding: '28px',
@@ -3798,7 +4121,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                 </div>
 
                 {/* Student / Parent Gmail */}
-                <div>
+                <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                     Gmail / Email Address *
                   </label>
@@ -3812,45 +4135,338 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                     style={{ width: '100%' }}
                   />
                 </div>
+              </div>
 
-                {/* Total Tuition Fee */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    Total Course Fee (INR ₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 45000"
-                    value={newStudent.totalFees === 0 ? '' : newStudent.totalFees}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setNewStudent({ ...newStudent, totalFees: v === '' ? 0 : Number(v) });
+              {/* Fee Structure & Payment Method Selection Section */}
+              <div
+                style={{
+                  marginTop: '20px',
+                  background: 'linear-gradient(135deg, rgba(242, 106, 27, 0.05), rgba(37, 99, 235, 0.04))',
+                  border: '1.5px solid rgba(242, 106, 27, 0.28)',
+                  borderRadius: '16px',
+                  padding: '18px 20px',
+                }}
+              >
+                {/* Section Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, #F26A1B, #E5530A)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        boxShadow: '0 2px 8px rgba(242, 106, 27, 0.35)',
+                      }}
+                    >
+                      <CreditCard size={17} />
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '14px', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                        Select Fee Type &amp; Payment Method *
+                      </h4>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+                        Click a payment method: 1 Full Payment (₹43k), 2 Half Payments (₹45k split ₹22.5k), or Term Payment (₹45k / 3 = ₹15k)
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '3px 10px',
+                      borderRadius: '20px',
+                      background: 'rgba(242, 106, 27, 0.12)',
+                      color: 'var(--brand-orange)',
+                      border: '1px solid rgba(242, 106, 27, 0.25)',
                     }}
-                    className="input-field"
-                    style={{ width: '100%' }}
-                  />
+                  >
+                    ⚡ Auto-Configures Fee
+                  </span>
                 </div>
 
-                {/* Initial Paid Fee */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    Initial Paid Fee (INR ₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={newStudent.paidFees === 0 ? '' : newStudent.paidFees}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setNewStudent({ ...newStudent, paidFees: v === '' ? 0 : Number(v) });
-                    }}
-                    className="input-field"
-                    style={{ width: '100%' }}
-                  />
+                {/* 3 Fee Payment Plan Method Cards */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                    gap: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  {REGISTRATION_FEE_PLANS.map((plan) => {
+                    const isSelected = (newStudent.feePlan || 'full_payment') === plan.id;
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => handleSelectRegistrationFeePlan(plan.id)}
+                        role="button"
+                        tabIndex={0}
+                        style={{
+                          border: isSelected ? `2px solid ${plan.borderColor}` : '1px solid var(--border-glass)',
+                          background: isSelected
+                            ? `linear-gradient(145deg, ${plan.badgeBg}, rgba(15, 23, 42, 0.75))`
+                            : 'rgba(255, 255, 255, 0.02)',
+                          boxShadow: isSelected ? `0 8px 20px ${plan.badgeBg}` : 'none',
+                          borderRadius: '12px',
+                          padding: '12px 14px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          position: 'relative',
+                        }}
+                      >
+                        {/* Top row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 900,
+                              color: isSelected ? plan.badgeColor : 'var(--text-muted)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.4px',
+                            }}
+                          >
+                            Option {plan.number}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '9.5px',
+                              fontWeight: 800,
+                              padding: '2px 7px',
+                              borderRadius: '10px',
+                              background: plan.badgeBg,
+                              color: plan.badgeColor,
+                              border: `1px solid ${plan.badgeColor}40`,
+                              letterSpacing: '0.3px',
+                            }}
+                          >
+                            {plan.badge}
+                          </span>
+                        </div>
+
+                        {/* Title & Fee */}
+                        <div style={{ marginBottom: '8px' }}>
+                          <div style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                            {plan.title}
+                          </div>
+                          <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                            {plan.subtitle}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '19px',
+                              fontWeight: 900,
+                              color: isSelected ? plan.badgeColor : 'var(--text-primary)',
+                              marginTop: '4px',
+                              letterSpacing: '-0.3px',
+                            }}
+                          >
+                            ₹{plan.totalFees.toLocaleString('en-IN')}
+                          </div>
+                        </div>
+
+                        {/* Breakdown pill */}
+                        <div
+                          style={{
+                            paddingTop: '8px',
+                            borderTop: '1px dashed rgba(255, 255, 255, 0.1)',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: isSelected ? 'var(--text-secondary)' : 'var(--text-muted)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '14px',
+                              height: '14px',
+                              borderRadius: '50%',
+                              border: isSelected ? `4px solid ${plan.borderColor}` : '1.5px solid var(--text-muted)',
+                              background: isSelected ? '#fff' : 'transparent',
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span>{plan.breakdown}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Amount Inputs: Total Course Fee & Initial Paid Fee */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                  {/* Total Tuition Fee */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        Total Course Fee (INR ₹) *
+                      </label>
+                      <span style={{ fontSize: '10.5px', color: 'var(--brand-orange)', fontWeight: 700 }}>
+                        Auto-set by Plan
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 43000"
+                      value={newStudent.totalFees === 0 ? '' : newStudent.totalFees}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setNewStudent({ ...newStudent, totalFees: v === '' ? 0 : Number(v) });
+                      }}
+                      className="input-field"
+                      style={{ width: '100%', fontWeight: 800, fontSize: '14px', letterSpacing: '0.3px' }}
+                    />
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                      Plan: {REGISTRATION_FEE_PLANS.find((p) => p.id === (newStudent.feePlan || 'full_payment'))?.feeType || 'Custom'}
+                    </span>
+                  </div>
+
+                  {/* Initial Paid Fee */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        Initial Paid Fee at Admission (INR ₹)
+                      </label>
+                      <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                        0 if paying later
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={newStudent.paidFees === 0 ? '' : newStudent.paidFees}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setNewStudent({ ...newStudent, paidFees: v === '' ? 0 : Number(v) });
+                      }}
+                      className="input-field"
+                      style={{ width: '100%', fontWeight: 800, fontSize: '14px', letterSpacing: '0.3px' }}
+                    />
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                      Amount collected during enrollment registration
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quick Presets for Initial Paid Fee */}
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                    Quick Initial Payment Presets:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {(
+                      REGISTRATION_FEE_PLANS.find((p) => p.id === (newStudent.feePlan || 'full_payment'))?.presets ||
+                      REGISTRATION_FEE_PLANS[0].presets
+                    ).map((preset) => {
+                      const isActive = Number(newStudent.paidFees) === preset.amount;
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => handleSetInitialPaidFeePreset(preset.amount)}
+                          style={{
+                            background: isActive ? 'rgba(242, 106, 27, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                            border: isActive ? '1px solid var(--brand-orange)' : '1px solid var(--border-glass)',
+                            color: isActive ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Real-Time Balance & Calculation Summary Banner */}
+                <div
+                  style={{
+                    marginTop: '14px',
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', fontSize: '12px' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Selected Plan: </span>
+                      <strong style={{ color: 'var(--text-primary)' }}>
+                        {REGISTRATION_FEE_PLANS.find((p) => p.id === (newStudent.feePlan || 'full_payment'))?.title || 'Full Payment'}
+                      </strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Total Fee: </span>
+                      <strong style={{ color: 'var(--text-primary)' }}>₹{Number(newStudent.totalFees || 0).toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Paid Now: </span>
+                      <strong style={{ color: '#10B981' }}>₹{Number(newStudent.paidFees || 0).toLocaleString('en-IN')}</strong>
+                    </div>
+                  </div>
+
+                  <div>
+                    {Math.max(0, Number(newStudent.totalFees || 0) - Number(newStudent.paidFees || 0)) === 0 ? (
+                      <span
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: 800,
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          background: 'rgba(16, 185, 129, 0.15)',
+                          color: '#10B981',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                        }}
+                      >
+                        <CheckCircle size={13} />
+                        Full Fees Settled
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: 800,
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          background: 'rgba(245, 158, 11, 0.15)',
+                          color: '#F59E0B',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                        }}
+                      >
+                        Pending Due: ₹{Math.max(0, Number(newStudent.totalFees || 0) - Number(newStudent.paidFees || 0)).toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

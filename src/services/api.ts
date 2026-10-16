@@ -25,7 +25,7 @@ const SESSION_USER_KEY = 'edupulse_user';
 
 export function getAuthToken(): string | null {
   try {
-    return sessionStorage.getItem(SESSION_TOKEN_KEY);
+    return sessionStorage.getItem(SESSION_TOKEN_KEY) || localStorage.getItem(SESSION_TOKEN_KEY);
   } catch {
     return null;
   }
@@ -38,11 +38,9 @@ export function hasActiveSession(): boolean {
 export function setAuthToken(token: string) {
   try {
     sessionStorage.setItem(SESSION_TOKEN_KEY, token);
-    // Explicitly purge localStorage to ensure closing window terminates session
-    localStorage.removeItem(SESSION_TOKEN_KEY);
-    localStorage.removeItem(SESSION_USER_KEY);
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
   } catch (err) {
-    console.warn('Could not save session token to sessionStorage:', err);
+    console.warn('Could not save session token to storage:', err);
   }
 }
 
@@ -146,6 +144,14 @@ export const api = {
     request(`/admin/students${batch ? `?batch=${encodeURIComponent(batch)}` : ''}`),
   getBatchAttendance: (batch?: string, date?: string) =>
     request(`/admin/attendance?batch=${encodeURIComponent(batch || '')}&date=${encodeURIComponent(date || '')}`),
+  getDailyAttendanceStats: (filters?: { date?: string; days?: number; batch?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.date) params.append('date', filters.date);
+    if (filters?.days) params.append('days', String(filters.days));
+    if (filters?.batch) params.append('batch', filters.batch);
+    const qs = params.toString();
+    return request(`/admin/attendance/daily-stats${qs ? `?${qs}` : ''}`);
+  },
   markBatchAttendance: (payload: { batch: string; date: string; records: any[] }) =>
     request('/admin/attendance/mark', { method: 'POST', body: JSON.stringify(payload) }),
   broadcastWhatsApp: (payload: {
