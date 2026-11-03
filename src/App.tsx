@@ -32,6 +32,20 @@ import {
   Bell,
 } from 'lucide-react';
 
+export const navigateToRoute = (route: string, replace = false) => {
+  if (typeof window === 'undefined') return;
+  const clean = route.replace(/^#?\/?/, '').trim();
+  const targetPath = clean ? `/${clean}` : '/';
+
+  if (window.location.pathname !== targetPath || window.location.hash) {
+    if (replace) {
+      window.history.replaceState({ route: clean }, document.title, targetPath);
+    } else {
+      window.history.pushState({ route: clean }, document.title, targetPath);
+    }
+  }
+};
+
 export function App() {
   const [student, setStudent] = useState<Student | null>(null);
   const [publicView, setPublicView] = useState<'landing' | 'login'>('landing');
@@ -148,20 +162,22 @@ export function App() {
     }
   }, [loadingInitial, student, publicView]);
 
-const getNormalizedRoute = (): string => {
-  const rawHash = (typeof window !== 'undefined' ? window.location.hash : '')
-    .toLowerCase()
-    .replace(/^#\/?/, '')
-    .trim();
-  const rawPath = (typeof window !== 'undefined' ? window.location.pathname : '')
-    .toLowerCase()
-    .replace(/^\/+/, '')
-    .replace(/\/+$/, '')
-    .trim();
+  const getNormalizedRoute = (): string => {
+  if (typeof window === 'undefined') return '';
+  const rawHash = window.location.hash.toLowerCase().replace(/^#\/?/, '').trim();
+  const rawPath = window.location.pathname.toLowerCase().replace(/^\/+/, '').replace(/\/+$/, '').trim();
 
-  if (rawHash) return rawHash;
-  if (rawPath && rawPath !== 'index.html') return rawPath;
-  return '';
+  let route = rawHash || (rawPath !== 'index.html' ? rawPath : '');
+  if (route.startsWith('admin/')) {
+    route = 'admin-' + route.slice('admin/'.length);
+  }
+
+  // Strip '#' from URL bar automatically if accessed via hash link
+  if (window.location.hash && route) {
+    window.history.replaceState({ route }, document.title, `/${route}`);
+  }
+
+  return route;
 };
 
   const checkSession = async () => {
@@ -217,7 +233,7 @@ const getNormalizedRoute = (): string => {
           ];
           const targetTab = validAdminTabs.includes(route as TabType) ? (route as TabType) : 'admin';
           setCurrentTab(targetTab);
-          window.location.hash = targetTab;
+          navigateToRoute(targetTab, true);
         } else if (
           [
             'dashboard',
@@ -232,12 +248,13 @@ const getNormalizedRoute = (): string => {
           ].includes(route)
         ) {
           setCurrentTab(route as TabType);
+          navigateToRoute(route, true);
         } else if (isAdmin) {
           setCurrentTab('admin');
-          window.location.hash = 'admin';
+          navigateToRoute('admin', true);
         } else {
           setCurrentTab('dashboard');
-          window.location.hash = 'dashboard';
+          navigateToRoute('dashboard', true);
         }
       } else {
         throw new Error('Invalid student session');
@@ -280,7 +297,7 @@ const getNormalizedRoute = (): string => {
       ];
       const target = (validAdminTabs.includes(route as TabType) ? route : 'admin') as TabType;
       setCurrentTab(target);
-      window.location.hash = target;
+      navigateToRoute(target);
     } else {
       const target = [
         'dashboard',
@@ -296,7 +313,7 @@ const getNormalizedRoute = (): string => {
         ? (route as TabType)
         : 'dashboard';
       setCurrentTab(target);
-      window.location.hash = target;
+      navigateToRoute(target);
     }
   };
 
@@ -304,8 +321,7 @@ const getNormalizedRoute = (): string => {
     clearAuthSession();
     setStudent(null);
     setPublicView('landing');
-    const cleanUrl = window.location.origin + window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
+    navigateToRoute('', true);
   };
 
   const handleNotificationSent = (payload: any) => {
@@ -487,15 +503,21 @@ const getNormalizedRoute = (): string => {
           onLoginSuccess={handleLoginSuccess}
           onBackToHome={() => {
             setPublicView('landing');
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
+            navigateToRoute('', true);
           }}
         />
       );
     }
 
     // Default view when running project: Student Landing Page
-    return <LandingPage onOpenLogin={() => setPublicView('login')} />;
+    return (
+      <LandingPage
+        onOpenLogin={() => {
+          setPublicView('login');
+          navigateToRoute('login');
+        }}
+      />
+    );
   }
 
   // Authenticated Student: Show Student Dashboard & Academic Portal
@@ -512,7 +534,7 @@ const getNormalizedRoute = (): string => {
         currentTab={currentTab}
         onSelectTab={(tab) => {
           setCurrentTab(tab);
-          window.location.hash = tab;
+          navigateToRoute(tab);
         }}
         student={student}
         onLogout={handleLogout}
@@ -528,7 +550,7 @@ const getNormalizedRoute = (): string => {
           student={student}
           onOpenProfile={() => {
             setCurrentTab('profile');
-            window.location.hash = 'profile';
+            navigateToRoute('profile');
           }}
           onLogout={handleLogout}
         />
@@ -562,7 +584,7 @@ const getNormalizedRoute = (): string => {
               onSelectSubTab={(sub: AdminTab) => {
                 const target = sub === 'overview' ? 'admin' : (`admin-${sub}` as TabType);
                 setCurrentTab(target);
-                window.location.hash = target;
+                navigateToRoute(target);
               }}
             />
           )}
@@ -572,7 +594,7 @@ const getNormalizedRoute = (): string => {
               student={student}
               onNavigate={(tab) => {
                 setCurrentTab(tab as any);
-                window.location.hash = tab;
+                navigateToRoute(tab);
               }}
             />
           )}
@@ -603,35 +625,50 @@ const getNormalizedRoute = (): string => {
           <>
             <div
               className={`mobile-bar-item ${currentTab === 'admin' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('admin')}
+              onClick={() => {
+                setCurrentTab('admin');
+                navigateToRoute('admin');
+              }}
             >
               <ShieldCheck size={18} />
               <span>Hub</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'admin-students' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('admin-students')}
+              onClick={() => {
+                setCurrentTab('admin-students');
+                navigateToRoute('admin-students');
+              }}
             >
               <Users size={18} />
               <span>Students</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'admin-templates' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('admin-templates')}
+              onClick={() => {
+                setCurrentTab('admin-templates');
+                navigateToRoute('admin-templates');
+              }}
             >
               <Bell size={18} />
               <span>Broadcast</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'admin-attendance' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('admin-attendance')}
+              onClick={() => {
+                setCurrentTab('admin-attendance');
+                navigateToRoute('admin-attendance');
+              }}
             >
               <CalendarCheck size={18} />
               <span>Attendance</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'admin-finance' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('admin-finance')}
+              onClick={() => {
+                setCurrentTab('admin-finance');
+                navigateToRoute('admin-finance');
+              }}
             >
               <CreditCard size={18} />
               <span>Finance</span>
@@ -641,42 +678,60 @@ const getNormalizedRoute = (): string => {
           <>
             <div
               className={`mobile-bar-item ${currentTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('dashboard')}
+              onClick={() => {
+                setCurrentTab('dashboard');
+                navigateToRoute('dashboard');
+              }}
             >
               <LayoutDashboard size={18} />
               <span>Home</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'attendance' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('attendance')}
+              onClick={() => {
+                setCurrentTab('attendance');
+                navigateToRoute('attendance');
+              }}
             >
               <CalendarCheck size={18} />
               <span>Attendance</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'syllabus' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('syllabus')}
+              onClick={() => {
+                setCurrentTab('syllabus');
+                navigateToRoute('syllabus');
+              }}
             >
               <BookOpen size={18} />
               <span>Syllabus</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'quizzes' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('quizzes')}
+              onClick={() => {
+                setCurrentTab('quizzes');
+                navigateToRoute('quizzes');
+              }}
             >
               <FileQuestion size={18} />
               <span>Tasks</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'payments' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('payments')}
+              onClick={() => {
+                setCurrentTab('payments');
+                navigateToRoute('payments');
+              }}
             >
               <CreditCard size={18} />
               <span>Fees</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'profile' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('profile')}
+              onClick={() => {
+                setCurrentTab('profile');
+                navigateToRoute('profile');
+              }}
             >
               <User size={18} />
               <span>Profile</span>

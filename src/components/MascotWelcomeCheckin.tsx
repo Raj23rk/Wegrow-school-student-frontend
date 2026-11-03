@@ -13,6 +13,8 @@ import {
   ChevronRight,
   ShieldAlert,
   Flame,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { Student, DailyAttendanceStatus, AttendanceHoursSummary } from '../types';
 import { api } from '../services/api';
@@ -44,6 +46,86 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
   const [liveSeconds, setLiveSeconds] = useState(0);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [mascotMood, setMascotMood] = useState<'wave' | 'celebrate' | 'focus' | 'rest'>('wave');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const hasSpokenRef = React.useRef(false);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const getCleanStudentName = () => {
+    const raw = student?.name || 'Sujay Sarvesh';
+    // Remove trailing initials like "R.B" or "R B" so speech engine sounds natural and friendly
+    const clean = raw.replace(/\s+[A-Za-z]\.?[A-Za-z]?\.?$/, '').trim();
+    return clean || 'Sujay Sarvesh';
+  };
+
+  const speakGreeting = (customText?: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    try {
+      window.speechSynthesis.cancel();
+
+      const name = getCleanStudentName();
+      const timeWish = getGreeting();
+      const textToSpeak =
+        customText ||
+        `${timeWish}, ${name}! I am Sparky, your AI campus mentor. Ready for today's learning session?`;
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.15;
+
+      const voices = window.speechSynthesis.getVoices();
+      const preferred =
+        voices.find(
+          (v) =>
+            v.lang.startsWith('en') &&
+            (v.name.includes('Natural') ||
+              v.name.includes('Google') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Zira') ||
+              v.name.includes('Jenny'))
+        ) || voices.find((v) => v.lang.startsWith('en'));
+
+      if (preferred) {
+        utterance.voice = preferred;
+      }
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        setMascotMood('celebrate');
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setMascotMood(status.hasCheckedIn && !status.hasCheckedOut ? 'focus' : 'wave');
+      };
+
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn('Speech synthesis error:', err);
+      setIsSpeaking(false);
+    }
+  };
+
+  // Auto-speak welcome greeting on arrival
+  useEffect(() => {
+    if (student?.name && !hasSpokenRef.current) {
+      hasSpokenRef.current = true;
+      const timer = setTimeout(() => {
+        speakGreeting();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [student?.name]);
 
   // Current live clock
   useEffect(() => {
@@ -111,21 +193,10 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
         } else {
           setMascotMood('wave');
         }
-
-        if (onAttendanceUpdated) {
-          onAttendanceUpdated(res.todayStats);
-        }
       }
     } catch (err) {
       console.warn('Failed to load student attendance status:', err);
     }
-  };
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
   };
 
   const firstName = student?.name ? student.name.split(' ')[0] : 'Explorer';
@@ -167,6 +238,8 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
         setMascotMood('celebrate');
         setTimeout(() => setMascotMood('focus'), 4000);
 
+        speakGreeting(`Awesome, ${getCleanStudentName()}! You are successfully checked in. Have an incredible learning session today!`);
+
         if (onAttendanceUpdated) {
           onAttendanceUpdated(res.todayStats);
         }
@@ -181,7 +254,7 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
   const handleCheckOut = async () => {
     if (loading) return;
     const confirmOut = window.confirm(
-      `Ready to wrap up today's session, ${firstName}? This will record your official check-out time and compute your total daily learning hours.`
+      `Ready to wrap up today's session, ${getCleanStudentName()}? This will record your official check-out time and compute your total daily learning hours.`
     );
     if (!confirmOut) return;
 
@@ -213,6 +286,8 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
           });
         }
         setMascotMood('rest');
+
+        speakGreeting(`Great work today, ${getCleanStudentName()}! Your hours have been recorded. Have a wonderful evening!`);
 
         if (onAttendanceUpdated) {
           onAttendanceUpdated(res.todayStats);
@@ -402,6 +477,7 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1) rotate(0deg)')}
             onClick={() => {
               confetti({ particleCount: 35, spread: 50, origin: { y: 0.6 } });
+              speakGreeting();
             }}
           >
             <img
@@ -449,6 +525,37 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
           >
             AI Campus Bot
           </div>
+
+          {/* Listen Button directly nearby Mascot */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              speakGreeting();
+            }}
+            style={{
+              marginTop: '8px',
+              background: isSpeaking ? 'rgba(16, 185, 129, 0.28)' : 'rgba(242, 106, 27, 0.22)',
+              border: `1.5px solid ${isSpeaking ? '#10B981' : 'rgba(242, 106, 27, 0.65)'}`,
+              color: isSpeaking ? '#34D399' : '#FFB088',
+              padding: '5px 14px',
+              borderRadius: '20px',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            title="Click to hear Sparky speak"
+          >
+            <Volume2 size={13} style={{ color: isSpeaking ? '#34D399' : '#FFC21A' }} />
+            <span>{isSpeaking ? 'Speaking...' : 'Listen 🔊'}</span>
+          </button>
         </div>
 
         {/* Mascot Speech Bubble & Welcome Details */}
@@ -466,7 +573,7 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
                 marginBottom: '2px',
               }}
             >
-              {getGreeting()}, Young Innovator! 👋
+              WeGrow AI Campus Mentor &bull; Active Learning Session 🚀
             </span>
             <h2
               style={{
@@ -478,7 +585,7 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
                 color: '#ffffff',
               }}
             >
-              Welcome back,{' '}
+              {getGreeting()},{' '}
               <span
                 style={{
                   background: 'linear-gradient(90deg, #F26A1B 0%, #FFC21A 100%)',
@@ -486,7 +593,7 @@ export const MascotWelcomeCheckin: React.FC<MascotWelcomeCheckinProps> = ({
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                {student?.name || 'Explorer'}
+                {student?.name || 'Sujay Sarvesh'}
               </span>
               !
             </h2>

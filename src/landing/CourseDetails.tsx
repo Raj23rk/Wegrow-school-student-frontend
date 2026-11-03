@@ -374,7 +374,7 @@ export default function CourseDetails({ onOpenLogin }: CourseDetailsProps) {
                       if (onOpenLogin) {
                         onOpenLogin();
                       } else {
-                        window.location.hash = "login";
+                        window.history.pushState({}, document.title, '/login'); window.dispatchEvent(new PopStateEvent('popstate'));
                       }
                     }}
                     className="inline-flex items-center gap-2 mt-3.5 bg-gradient-to-r from-[#F7781F] to-[#E5530A] text-white font-extrabold text-sm rounded-xl px-5 py-2.5 shadow-cta hover:shadow-cta-hover transition-all cursor-pointer border-0"

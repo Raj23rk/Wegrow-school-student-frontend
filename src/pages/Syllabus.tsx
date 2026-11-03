@@ -24,6 +24,7 @@ import {
 import { api } from '../services/api';
 import { SyllabusItem, Student, SyllabusModule } from '../types';
 import { AI_COURSE_SYLLABUS } from '../data/aiSyllabusData';
+import { getCurriculumProgress, CurriculumProgress } from '../services/curriculumProgress';
 
 interface SyllabusProps {
   student: Student | null;
@@ -36,9 +37,16 @@ export const Syllabus: React.FC<SyllabusProps> = ({ student }) => {
   const [typeFilter, setTypeFilter] = useState<'all' | 'Code' | 'No-code'>('all');
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'deep' | 'matrix'>('deep');
+  const [curriculum, setCurriculum] = useState<CurriculumProgress>(getCurriculumProgress());
 
   useEffect(() => {
     fetchSyllabus();
+
+    const handleProgressUpdate = (e: any) => {
+      setCurriculum(e.detail || getCurriculumProgress());
+    };
+    window.addEventListener('curriculum:progress_updated', handleProgressUpdate);
+    return () => window.removeEventListener('curriculum:progress_updated', handleProgressUpdate);
   }, []);
 
   const fetchSyllabus = async () => {
@@ -304,8 +312,8 @@ export const Syllabus: React.FC<SyllabusProps> = ({ student }) => {
         {phases.map((phase) => {
           const isSelected = phase.id === selectedPhaseId;
           const pNum = phase.phaseNumber || 1;
-          const isCompleted = pNum === 1;
-          const isActive = pNum === 2;
+          const isCompleted = pNum < curriculum.activePhaseNumber;
+          const isActive = pNum === curriculum.activePhaseNumber;
           return (
             <button
               key={phase.id}

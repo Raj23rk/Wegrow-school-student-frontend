@@ -19,10 +19,20 @@ import {
   X,
   UserCheck,
   ShieldAlert,
+  BookOpen,
+  Sparkles,
+  ArrowUpRight,
+  CheckSquare,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useToast } from './ToastContext';
 import { StudentTimesheetItem, StudentTimesheetSummary } from '../types';
+import {
+  getCurriculumProgress,
+  saveCurriculumProgress,
+  CurriculumProgress,
+} from '../services/curriculumProgress';
+import { AI_COURSE_SYLLABUS } from '../data/aiSyllabusData';
 
 interface AdminAttendanceTimesheetProps {
   onNotificationSent?: (payload: any) => void;
@@ -33,8 +43,17 @@ export const AdminAttendanceTimesheet: React.FC<AdminAttendanceTimesheetProps> =
 }) => {
   const { toast } = useToast();
 
-  // Sub-tabs: 'timesheet' | 'batch' | 'analytics'
-  const [activeSubTab, setActiveSubTab] = useState<'timesheet' | 'batch' | 'analytics'>('timesheet');
+  // Sub-tabs: 'timesheet' | 'batch' | 'curriculum' | 'analytics'
+  const [activeSubTab, setActiveSubTab] = useState<'timesheet' | 'batch' | 'curriculum' | 'analytics'>('timesheet');
+
+  // Curriculum Progress state
+  const [curriculum, setCurriculum] = useState<CurriculumProgress>(getCurriculumProgress());
+  const [selectedPhaseNo, setSelectedPhaseNo] = useState<number>(curriculum.activePhaseNumber);
+  const [coveredTopicText, setCoveredTopicText] = useState<string>(curriculum.recentCoveredTopic);
+  const [completedHoursInput, setCompletedHoursInput] = useState<number>(curriculum.completedHours);
+  const [milestoneInput, setMilestoneInput] = useState<string>(curriculum.activeMilestone);
+  const [curriculumBatch, setCurriculumBatch] = useState<string>(curriculum.batch);
+  const [savingCurriculum, setSavingCurriculum] = useState(false);
 
   // Timesheet state
   const [timesheet, setTimesheet] = useState<StudentTimesheetItem[]>([]);
@@ -68,6 +87,57 @@ export const AdminAttendanceTimesheet: React.FC<AdminAttendanceTimesheetProps> =
   // Student Detail History Modal
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<StudentTimesheetItem | null>(null);
+
+  const handlePhaseSelect = (phaseNo: number) => {
+    setSelectedPhaseNo(phaseNo);
+    const found = AI_COURSE_SYLLABUS.find((p) => p.phaseNumber === phaseNo);
+    if (found) {
+      let cumulativeHours = 0;
+      for (const p of AI_COURSE_SYLLABUS) {
+        if (p.phaseNumber < phaseNo) {
+          cumulativeHours += p.hours;
+        } else if (p.phaseNumber === phaseNo) {
+          cumulativeHours += Math.round(p.hours * 0.4); // default ~40% through phase
+        }
+      }
+      setCompletedHoursInput(cumulativeHours);
+      setMilestoneInput(`${found.phaseTitle} in progress`);
+      if (found.modules && found.modules.length > 0) {
+        setCoveredTopicText(`Module ${found.modules[0].no}: ${found.modules[0].name}`);
+      }
+    }
+  };
+
+  const handleSaveCurriculumProgress = () => {
+    setSavingCurriculum(true);
+    const foundPhase = AI_COURSE_SYLLABUS.find((p) => p.phaseNumber === selectedPhaseNo);
+    const phaseTitle = foundPhase ? foundPhase.phaseTitle : `Phase ${selectedPhaseNo}`;
+
+    const compPhases: number[] = [];
+    for (let i = 1; i < selectedPhaseNo; i++) {
+      compPhases.push(i);
+    }
+
+    const updated: CurriculumProgress = {
+      courseTitle: 'Complete AI & Generative AI Course (6 Phases • 20 Modules)',
+      activePhaseNumber: selectedPhaseNo,
+      activePhaseTitle: phaseTitle,
+      activeMilestone: milestoneInput.trim() || `${phaseTitle} in progress`,
+      completedHours: Math.min(345, Math.max(0, Number(completedHoursInput) || 0)),
+      totalHours: 345,
+      completedPhases: compPhases,
+      recentCoveredTopic: coveredTopicText.trim(),
+      lastUpdatedDate: new Date().toISOString().split('T')[0],
+      batch: curriculumBatch,
+    };
+
+    saveCurriculumProgress(updated);
+    setCurriculum(updated);
+    setSavingCurriculum(false);
+    toast.success(
+      `Curriculum Progress Saved! Active Track: ${phaseTitle} (${updated.completedHours}/345h)`
+    );
+  };
 
   useEffect(() => {
     loadTimesheet();
@@ -344,6 +414,27 @@ export const AdminAttendanceTimesheet: React.FC<AdminAttendanceTimesheetProps> =
               }}
             >
               <CalendarCheck size={15} /> Batch Roster & Alerts
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('curriculum')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: activeSubTab === 'curriculum' ? 'var(--brand-orange)' : 'transparent',
+                color: activeSubTab === 'curriculum' ? '#ffffff' : 'var(--text-secondary)',
+                boxShadow: activeSubTab === 'curriculum' ? '0 4px 12px rgba(242, 106, 27, 0.35)' : 'none',
+                transition: 'all 0.2s',
+              }}
+            >
+              <BookOpen size={15} /> Topic Coverage &amp; Roadmap Progress 🎯
             </button>
             <button
               type="button"
@@ -1000,6 +1091,274 @@ export const AdminAttendanceTimesheet: React.FC<AdminAttendanceTimesheetProps> =
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* VIEW 4: TOPIC COVERAGE & ENROLLED CURRICULUM PROGRESS    */}
+      {/* ======================================================== */}
+      {activeSubTab === 'curriculum' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Top Info Banner with Live Preview */}
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 800, color: 'var(--brand-orange)', background: 'rgba(242, 106, 27, 0.15)', border: '1px solid rgba(242, 106, 27, 0.35)', padding: '3px 10px', borderRadius: '20px', marginBottom: '6px', textTransform: 'uppercase' }}>
+                  <Sparkles size={12} /> Student Dashboard Dynamic Sync
+                </div>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BookOpen size={22} style={{ color: 'var(--brand-orange)' }} />
+                  Curriculum Topic Coverage &amp; Progress Updater
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Update the topics taught today, active phase, and completed hours. This live updates the student portal&apos;s Enrolled Curriculum Roadmap and Syllabus milestone status.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '10px', background: 'var(--bg-glass)', color: 'var(--primary-light)', border: '1px solid var(--border-glass)' }}>
+                  Total Curriculum: 345 Hours &bull; 6 Phases &bull; 20 Modules
+                </span>
+              </div>
+            </div>
+
+            {/* LIVE PREVIEW: The Student Portal Banner */}
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ fontSize: '11.5px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px' }}>
+                👁️ Live Student Portal Banner Preview:
+              </div>
+              <div className="roadmap-hero-card" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '14px',
+                        background: 'rgba(37, 99, 235, 0.22)',
+                        border: '1px solid rgba(37, 99, 235, 0.38)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#60a5fa',
+                        flexShrink: 0,
+                        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.2)',
+                      }}
+                    >
+                      <BookOpen size={24} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Enrolled Curriculum Roadmap
+                      </div>
+                      <h3 style={{ fontSize: '19px', fontWeight: 800, margin: '2px 0' }}>
+                        {curriculum.courseTitle}
+                      </h3>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                        Active Track: <strong style={{ color: 'var(--text-primary)' }}>{curriculum.activePhaseTitle}</strong> &bull; {curriculum.completedHours} of {curriculum.totalHours} Hours Completed
+                      </p>
+                      {curriculum.recentCoveredTopic && (
+                        <div style={{ marginTop: '5px', fontSize: '12px', color: '#93c5fd', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(59, 130, 246, 0.12)', padding: '2px 8px', borderRadius: '6px' }}>
+                          <span>⚡ Covered Today:</span> <strong>{curriculum.recentCoveredTopic}</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <span
+                    className="btn btn-outline"
+                    style={{ padding: '8px 18px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}
+                  >
+                    View Full AI Syllabus <ArrowUpRight size={14} />
+                  </span>
+                </div>
+
+                <div style={{ marginTop: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="pulse-indicator" style={{ width: '6px', height: '6px' }} />
+                      Active Milestone: <strong>{curriculum.activeMilestone}</strong>
+                    </span>
+                    <span style={{ color: 'var(--primary-light)', fontWeight: 800 }}>
+                      {curriculum.completedHours} / {curriculum.totalHours} Hours ({Math.min(100, Math.max(0, ((curriculum.completedHours / curriculum.totalHours) * 100))).toFixed(1)}% Total Curriculum Completed)
+                    </span>
+                  </div>
+                  <div className="progress-shimmer-track">
+                    <div className="progress-shimmer-bar" style={{ width: `${Math.min(100, Math.max(0, ((curriculum.completedHours / curriculum.totalHours) * 100)))}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Form Controls Card */}
+          <div className="glass-card" style={{ padding: '26px' }}>
+            <h4 style={{ fontSize: '16.5px', fontWeight: 800, margin: '0 0 16px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Edit3 size={18} style={{ color: 'var(--brand-orange)' }} />
+              Update Topic Covered Today &amp; Curriculum Milestone
+            </h4>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '20px' }}>
+              {/* Batch Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  Target Student Cohort / Batch
+                </label>
+                <select
+                  value={curriculumBatch}
+                  onChange={(e) => setCurriculumBatch(e.target.value)}
+                  className="input-field"
+                  style={{ width: '100%', fontSize: '13.5px' }}
+                >
+                  <option value="Cohort Alpha (12-Month Diploma)">Cohort Alpha (12-Month Diploma)</option>
+                  <option value="Cohort Beta (AI & Robotics)">Cohort Beta (AI &amp; Robotics)</option>
+                  <option value="Cohort Gamma (Young Coders Weekend)">Cohort Gamma (Young Coders Weekend)</option>
+                </select>
+              </div>
+
+              {/* Active Phase Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  Current Active Phase
+                </label>
+                <select
+                  value={selectedPhaseNo}
+                  onChange={(e) => handlePhaseSelect(Number(e.target.value))}
+                  className="input-field"
+                  style={{ width: '100%', fontSize: '13.5px' }}
+                >
+                  {AI_COURSE_SYLLABUS.map((p) => (
+                    <option key={p.id} value={p.phaseNumber}>
+                      {p.phaseTitle} ({p.hours} Hours &bull; {p.modules?.length || 0} Modules)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Cumulative Hours Completed */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  Cumulative Completed Hours (Out of 345)
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="number"
+                    min={0}
+                    max={345}
+                    value={completedHoursInput}
+                    onChange={(e) => setCompletedHoursInput(Number(e.target.value))}
+                    className="input-field"
+                    style={{ flex: 1, fontSize: '14px', fontWeight: 700 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCompletedHoursInput((prev) => Math.min(345, prev + 2))}
+                    className="btn btn-secondary btn-sm"
+                    title="Add 2 hours"
+                  >
+                    +2h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCompletedHoursInput((prev) => Math.min(345, prev + 4))}
+                    className="btn btn-secondary btn-sm"
+                    title="Add 4 hours"
+                  >
+                    +4h
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Topic Covered Today (Input & Syllabus Quick Chips) */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Topic / Concept Covered Today in Class / Lab
+              </label>
+              <input
+                type="text"
+                value={coveredTopicText}
+                onChange={(e) => setCoveredTopicText(e.target.value)}
+                placeholder="e.g. Convolutional Neural Networks, Max-Pooling & Lobe Vision Models"
+                className="input-field"
+                style={{ width: '100%', fontSize: '14px', marginBottom: '10px' }}
+              />
+
+              {/* Quick suggestions from selected phase modules */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>
+                  Quick Insert from {AI_COURSE_SYLLABUS.find(p => p.phaseNumber === selectedPhaseNo)?.phaseTitle.split(':')[0]}:
+                </span>
+                {AI_COURSE_SYLLABUS.find(p => p.phaseNumber === selectedPhaseNo)?.modules?.map((m) => (
+                  <button
+                    key={m.no}
+                    type="button"
+                    onClick={() => setCoveredTopicText(`Module ${m.no}: ${m.name}`)}
+                    style={{
+                      background: 'rgba(37, 99, 235, 0.1)',
+                      border: '1px solid rgba(37, 99, 235, 0.25)',
+                      color: 'var(--primary-light)',
+                      borderRadius: '8px',
+                      padding: '3px 10px',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(37, 99, 235, 0.25)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(37, 99, 235, 0.1)')}
+                  >
+                    M{m.no}: {m.name.length > 32 ? m.name.substring(0, 32) + '...' : m.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Active Milestone Status Description */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Active Milestone Label (Shown on Progress Bar)
+              </label>
+              <input
+                type="text"
+                value={milestoneInput}
+                onChange={(e) => setMilestoneInput(e.target.value)}
+                placeholder="e.g. Phase 2 in progress • ML Fundamentals, Lobe & Advanced ML"
+                className="input-field"
+                style={{ width: '100%', fontSize: '13.5px' }}
+              />
+            </div>
+
+            {/* Action Bar */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid var(--border-glass)', paddingTop: '18px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const curr = getCurriculumProgress();
+                  setCurriculum(curr);
+                  setSelectedPhaseNo(curr.activePhaseNumber);
+                  setCoveredTopicText(curr.recentCoveredTopic);
+                  setCompletedHoursInput(curr.completedHours);
+                  setMilestoneInput(curr.activeMilestone);
+                  setCurriculumBatch(curr.batch);
+                }}
+                className="btn btn-secondary"
+              >
+                <RefreshCw size={14} /> Reset Form
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveCurriculumProgress}
+                disabled={savingCurriculum}
+                className="btn btn-primary"
+                style={{ padding: '10px 24px', fontSize: '14px', fontWeight: 800 }}
+              >
+                <CheckCircle size={16} />
+                {savingCurriculum ? 'Updating Progress...' : 'Save & Update Student Roadmap Progress 🚀'}
+              </button>
+            </div>
           </div>
         </div>
       )}

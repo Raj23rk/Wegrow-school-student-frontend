@@ -29,33 +29,81 @@ import { api } from '../services/api';
 import { TabType } from '../components/Sidebar';
 import { Student } from '../types';
 import { MascotWelcomeCheckin } from '../components/MascotWelcomeCheckin';
+import { getCurriculumProgress, CurriculumProgress } from '../services/curriculumProgress';
 
 interface DashboardProps {
   onNavigate: (tab: TabType) => void;
   student?: Student | null;
 }
 
+const DEFAULT_DASHBOARD_DATA = {
+  attendance: {
+    totalDays: 0,
+    presentCount: 0,
+    absentCount: 0,
+    lateCount: 0,
+    percentage: 0,
+    chartData: [],
+  },
+  classes: {
+    ongoingCount: 0,
+    upcomingCount: 0,
+    ongoingList: [],
+    upcomingList: [],
+    allToday: [],
+  },
+  tests: {
+    testsTaken: 0,
+    averageScore: 0,
+    highestScore: 0,
+    recentResults: [],
+    subjectPerformance: [],
+    weeklyStudyHours: [],
+  },
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, student }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [curriculum, setCurriculum] = useState<CurriculumProgress>(getCurriculumProgress());
 
   useEffect(() => {
-    fetchStats();
+    fetchStats(true);
+
+    const handleProgressUpdate = (e: any) => {
+      if (e.detail) {
+        setCurriculum(e.detail);
+      } else {
+        setCurriculum(getCurriculumProgress());
+      }
+    };
+    window.addEventListener('curriculum:progress_updated', handleProgressUpdate);
+    return () => window.removeEventListener('curriculum:progress_updated', handleProgressUpdate);
   }, []);
 
-  const fetchStats = async () => {
+  const progressPercent = Math.min(
+    100,
+    Math.max(0, parseFloat(((curriculum.completedHours / curriculum.totalHours) * 100).toFixed(1)))
+  );
+
+  const fetchStats = async (showLoading = false) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const res = await api.getDashboardStats();
-      setData(res.data);
+      if (res && res.data) {
+        setData(res.data);
+      } else {
+        setData((prev: any) => prev || DEFAULT_DASHBOARD_DATA);
+      }
     } catch (err) {
-      console.error('Failed to load dashboard stats:', err);
+      console.warn('Dashboard stats fallback applied:', err);
+      setData((prev: any) => prev || DEFAULT_DASHBOARD_DATA);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading || !data) {
+  if (loading && !data) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <div style={{ textAlign: 'center' }}>
@@ -66,7 +114,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, student }) => 
     );
   }
 
-  const { attendance, classes, tests } = data;
+  const currentData = data || DEFAULT_DASHBOARD_DATA;
+  const attendance = currentData.attendance || DEFAULT_DASHBOARD_DATA.attendance;
+  const classes = currentData.classes || DEFAULT_DASHBOARD_DATA.classes;
+  const tests = currentData.tests || DEFAULT_DASHBOARD_DATA.tests;
 
   return (
     <div className="page-fade-in">
@@ -96,7 +147,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, student }) => 
       </div>
 
       {/* Daily Student Attendance & Mascot Welcome Check-In */}
-      <MascotWelcomeCheckin student={student || null} onAttendanceUpdated={fetchStats} />
+      <MascotWelcomeCheckin student={student || null} onAttendanceUpdated={() => fetchStats(false)} />
 
       {/* AI Syllabus Learning Path Banner with Visual Progress Shimmer */}
       <div className="roadmap-hero-card">
@@ -124,11 +175,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, student }) => 
                 Enrolled Curriculum Roadmap
               </div>
               <h3 style={{ fontSize: '19px', fontWeight: 800, margin: '2px 0' }}>
-                Complete AI &amp; Generative AI Course (6 Phases • 20 Modules)
+                {curriculum.courseTitle}
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
-                Active Track: <strong style={{ color: 'var(--text-primary)' }}>Phase 2: ML Fundamentals, Lobe &amp; Advanced ML</strong> &bull; 64 of 345 Hours Completed
+                Active Track: <strong style={{ color: 'var(--text-primary)' }}>{curriculum.activePhaseTitle}</strong> &bull; {curriculum.completedHours} of {curriculum.totalHours} Hours Completed
               </p>
+              {curriculum.recentCoveredTopic && (
+                <div style={{ marginTop: '5px', fontSize: '12px', color: '#93c5fd', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(59, 130, 246, 0.12)', padding: '2px 8px', borderRadius: '6px' }}>
+                  <span>⚡ Covered Today:</span> <strong>{curriculum.recentCoveredTopic}</strong>
+                </div>
+              )}
             </div>
           </div>
 
@@ -146,14 +202,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, student }) => 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
             <span style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <span className="pulse-indicator" style={{ width: '6px', height: '6px' }} />
-              Active Milestone: <strong>Phase 2 in progress</strong>
+              Active Milestone: <strong>{curriculum.activeMilestone}</strong>
             </span>
             <span style={{ color: 'var(--primary-light)', fontWeight: 800 }}>
-              64 / 345 Hours (18.6% Total Curriculum Completed)
+              {curriculum.completedHours} / {curriculum.totalHours} Hours ({progressPercent}% Total Curriculum Completed)
             </span>
           </div>
           <div className="progress-shimmer-track">
-            <div className="progress-shimmer-bar" style={{ width: '18.6%' }} />
+            <div className="progress-shimmer-bar" style={{ width: `${progressPercent}%` }} />
           </div>
         </div>
       </div>
