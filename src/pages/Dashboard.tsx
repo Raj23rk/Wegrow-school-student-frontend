@@ -27,12 +27,15 @@ import {
 } from 'recharts';
 import { api } from '../services/api';
 import { TabType } from '../components/Sidebar';
+import { Student } from '../types';
+import { MascotWelcomeCheckin } from '../components/MascotWelcomeCheckin';
 
 interface DashboardProps {
   onNavigate: (tab: TabType) => void;
+  student?: Student | null;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, student }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -91,6 +94,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         </div>
       </div>
+
+      {/* Daily Student Attendance & Mascot Welcome Check-In */}
+      <MascotWelcomeCheckin student={student || null} onAttendanceUpdated={fetchStats} />
 
       {/* AI Syllabus Learning Path Banner with Visual Progress Shimmer */}
       <div className="roadmap-hero-card">

@@ -216,14 +216,34 @@ export const FeesPayments: React.FC<FeesProps> = ({ student, onRefreshStudent })
           </p>
         </div>
 
-        <button
-          id="btn-open-razorpay-top"
-          className="btn btn-primary"
-          onClick={() => setIsRazorpayOpen(true)}
-          style={{ background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)' }}
-        >
-          <CreditCard size={17} /> Pay via Razorpay
-        </button>
+        {feeStats.dueFees <= 0 ? (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid #10B981',
+              color: '#10B981',
+              fontWeight: 800,
+              fontSize: '14px',
+            }}
+          >
+            <CheckCircle2 size={18} />
+            <span>Full Payment Settled (100% Paid)</span>
+          </div>
+        ) : (
+          <button
+            id="btn-open-razorpay-top"
+            className="btn btn-primary"
+            onClick={() => setIsRazorpayOpen(true)}
+            style={{ background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)' }}
+          >
+            <CreditCard size={17} /> Pay Fee via Razorpay
+          </button>
+        )}
       </div>
 
       {/* Success Notification Alert if paid */}

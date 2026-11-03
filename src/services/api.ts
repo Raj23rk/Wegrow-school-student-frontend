@@ -138,6 +138,33 @@ export const api = {
   verifyRazorpayPayment: (payload: any) =>
     request('/payments/verify', { method: 'POST', body: JSON.stringify(payload) }),
 
+  // Attendance & Daily Student Timesheet
+  checkIn: (payload?: { studentId?: string; studentName?: string; rollNumber?: string; batch?: string; date?: string; checkInTime?: string; remarks?: string }) =>
+    request('/attendance/check-in', { method: 'POST', body: JSON.stringify(payload || {}) }),
+  checkOut: (payload?: { studentId?: string; date?: string; checkOutTime?: string; remarks?: string }) =>
+    request('/attendance/check-out', { method: 'POST', body: JSON.stringify(payload || {}) }),
+  getStudentAttendanceStatus: (studentId?: string) =>
+    request(`/attendance/student-status${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ''}`),
+  getStudentsTimesheet: (filters?: { date?: string; batch?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.date) params.append('date', filters.date);
+    if (filters?.batch) params.append('batch', filters.batch);
+    if (filters?.search) params.append('search', filters.search);
+    const qs = params.toString();
+    return request(`/attendance/students-timesheet${qs ? `?${qs}` : ''}`);
+  },
+  recordAttendanceManualEntry: (payload: {
+    studentId: string;
+    studentName?: string;
+    rollNumber?: string;
+    batch?: string;
+    date: string;
+    checkInTime?: string;
+    checkOutTime?: string;
+    status?: string;
+    remarks?: string;
+  }) => request('/attendance/manual-entry', { method: 'POST', body: JSON.stringify(payload) }),
+
   // Admin Endpoints
   getAdminOverview: () => request('/admin/overview'),
   getAdminStudents: (batch?: string) =>

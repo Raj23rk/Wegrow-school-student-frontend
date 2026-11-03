@@ -27,53 +27,66 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
 }) => {
   // Prebooking paid is verified at ₹1,000
   const PREBOOKING_PAID = 1000;
+  const isFullyPaid = dueAmount <= 0;
 
-  // 3 Official Fee Payment Plans
-  const plans = [
+  const dynamicPlans = [
     {
-      id: 'term_plan',
-      title: 'Three Term Plan (Term 1)',
-      badge: 'Recommended',
+      id: 'full_settlement',
+      title: 'Full Payment - Settle Remaining Balance',
+      badge: '100% Settled',
       badgeColor: '#10B981',
-      totalCourseFee: 45000,
-      payableAmount: 14000, // ₹15,000 - ₹1,000 prebooking
-      description: 'Term 1 fee of ₹15,000 with ₹1,000 prebooking credited.',
-      schedule: 'Term 1: ₹14,000 • Term 2: ₹15,000 • Term 3: ₹15,000',
-      category: 'Three Term Plan - Term 1 Fee (₹1,000 Prebooking Reduced)',
+      totalCourseFee: 43000,
+      payableAmount: isFullyPaid ? 0 : dueAmount,
+      description: isFullyPaid
+        ? 'All academic fees are fully settled.'
+        : `Complete one-time settlement of your entire remaining balance (₹${dueAmount.toLocaleString('en-IN')}).`,
+      schedule: 'Single one-time settlement • Zero remaining dues',
+      category: 'Full Course Tuition Fee - Complete Settlement',
     },
+    ...(dueAmount > 15000
+      ? [
+          {
+            id: 'term_installment',
+            title: 'Scheduled Term Installment',
+            badge: 'Term Plan',
+            badgeColor: '#38BDF8',
+            totalCourseFee: 45000,
+            payableAmount: 15000,
+            description: 'Pay next scheduled term installment of ₹15,000.',
+            schedule: 'Term 2 Fee • Remaining balance after payment: ₹' + (dueAmount - 15000).toLocaleString('en-IN'),
+            category: 'Term Tuition Fee Installment (₹15,000)',
+          },
+        ]
+      : []),
     {
-      id: 'half_payment',
-      title: 'Half Payment (2 Terms)',
-      badge: '50% Split',
-      badgeColor: '#38BDF8',
-      totalCourseFee: 45000,
-      payableAmount: 21500, // ₹22,500 - ₹1,000 prebooking
-      description: 'First half of ₹22,500 with ₹1,000 prebooking credited.',
-      schedule: 'Installment 1: ₹21,500 • Installment 2: ₹22,500',
-      category: 'Half Payment Plan - Installment 1 of 2 (₹45,000 Split)',
-    },
-    {
-      id: 'fulltime_discount',
-      title: 'Full-Time One-Time Pay',
+      id: 'one_time_course_fee',
+      title: 'Full Course Fee (Annual One-Time)',
       badge: 'Save ₹2,000',
       badgeColor: '#F59E0B',
       totalCourseFee: 43000,
-      payableAmount: 42000, // ₹43,000 - ₹1,000 prebooking
-      description: 'Discounted annual fee of ₹43,000 minus ₹1,000 prebooking.',
-      schedule: 'Single one-time settlement (Save ₹2,000 instantly)',
+      payableAmount: isFullyPaid ? 0 : Math.min(dueAmount, 43000),
+      description: 'Discounted annual course fee of ₹43,000 with ₹2,000 tuition concession.',
+      schedule: 'One-time complete academic year fee',
       category: 'Full-Time Annual Tuition Payment (One-Time ₹43,000 Plan)',
     },
   ];
 
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('term_plan');
-  const [amount, setAmount] = useState<number>(14000);
-  const [feeType, setFeeType] = useState('Three Term Plan - Term 1 Fee (₹1,000 Prebooking Reduced)');
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('full_settlement');
+  const [amount, setAmount] = useState<number>(isFullyPaid ? 0 : dueAmount);
+  const [feeType, setFeeType] = useState('Full Course Tuition Fee - Complete Settlement');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (dueAmount > 0) {
+      setAmount(dueAmount);
+      setSelectedPlanId('full_settlement');
+    }
+  }, [dueAmount]);
+
   if (!isOpen) return null;
 
-  const handleSelectPlan = (plan: typeof plans[0]) => {
+  const handleSelectPlan = (plan: typeof dynamicPlans[0]) => {
     setSelectedPlanId(plan.id);
     setAmount(plan.payableAmount);
     setFeeType(plan.category);
@@ -249,7 +262,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
             Choose Payment Plan
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-            {plans.map((p) => {
+            {dynamicPlans.map((p) => {
               const isSelected = selectedPlanId === p.id && amount === p.payableAmount;
               return (
                 <div

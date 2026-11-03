@@ -20,6 +20,7 @@ import { Student } from '../types';
 
 export type TabType =
   | 'dashboard'
+  | 'attendance'
   | 'syllabus'
   | 'videos'
   | 'quizzes'
@@ -72,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'admin-attendance',
-      label: 'Batch Attendance',
+      label: 'Attendance & Hours',
       icon: CalendarCheck,
     },
     {
@@ -117,6 +118,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'dashboard',
       label: 'Student Dashboard',
       icon: LayoutDashboard,
+    },
+    {
+      id: 'attendance',
+      label: 'Daily Attendance',
+      icon: CalendarCheck,
     },
     {
       id: 'syllabus',

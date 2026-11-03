@@ -10,6 +10,7 @@ import { CourseMaterials } from './pages/CourseMaterials';
 import { Assignments } from './pages/Assignments';
 import { FeesPayments } from './pages/FeesPayments';
 import { Profile } from './pages/Profile';
+import { StudentAttendance } from './pages/StudentAttendance';
 import { AdminControlCenter, AdminTab } from './pages/AdminControlCenter';
 import { LandingPage } from './landing/LandingPage';
 import { StudentLoginView } from './landing/StudentLoginView';
@@ -99,6 +100,7 @@ export function App() {
       // Check student portal tabs
       const validStudentTabs: TabType[] = [
         'dashboard',
+        'attendance',
         'syllabus',
         'videos',
         'quizzes',
@@ -219,6 +221,7 @@ const getNormalizedRoute = (): string => {
         } else if (
           [
             'dashboard',
+            'attendance',
             'syllabus',
             'videos',
             'quizzes',
@@ -281,6 +284,7 @@ const getNormalizedRoute = (): string => {
     } else {
       const target = [
         'dashboard',
+        'attendance',
         'syllabus',
         'videos',
         'quizzes',
@@ -565,12 +569,14 @@ const getNormalizedRoute = (): string => {
 
           {currentTab === 'dashboard' && (
             <Dashboard
+              student={student}
               onNavigate={(tab) => {
                 setCurrentTab(tab as any);
                 window.location.hash = tab;
               }}
             />
           )}
+          {currentTab === 'attendance' && <StudentAttendance student={student} />}
           {currentTab === 'syllabus' && <Syllabus student={student} />}
           {currentTab === 'videos' && <Videos />}
           {currentTab === 'quizzes' && (
@@ -639,6 +645,13 @@ const getNormalizedRoute = (): string => {
             >
               <LayoutDashboard size={18} />
               <span>Home</span>
+            </div>
+            <div
+              className={`mobile-bar-item ${currentTab === 'attendance' ? 'active' : ''}`}
+              onClick={() => setCurrentTab('attendance')}
+            >
+              <CalendarCheck size={18} />
+              <span>Attendance</span>
             </div>
             <div
               className={`mobile-bar-item ${currentTab === 'syllabus' ? 'active' : ''}`}

@@ -23,9 +23,67 @@ export interface Student {
 
 export interface AttendanceRecord {
   date: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  durationHours?: number;
   status: 'present' | 'absent' | 'late' | 'excused';
-  score: number;
-  remarks: string;
+  score?: number;
+  remarks?: string;
+  checkInMethod?: string;
+}
+
+export interface DailyAttendanceStatus {
+  hasCheckedIn: boolean;
+  checkInTime?: string;
+  hasCheckedOut: boolean;
+  checkOutTime?: string;
+  todayHours: number;
+  activeMinutes?: number;
+  status: string;
+  record?: any;
+}
+
+export interface AttendanceHoursSummary {
+  weekStart?: string;
+  weekEnd?: string;
+  totalHoursWeek: number;
+  daysPresentWeek: number;
+  monthStart?: string;
+  monthEnd?: string;
+  totalHoursMonth: number;
+  daysPresentMonth: number;
+  records?: AttendanceRecord[];
+}
+
+export interface StudentTimesheetItem {
+  studentId: string;
+  name: string;
+  rollNumber: string;
+  batch: string;
+  avatar: string;
+  email: string;
+  phone?: string;
+  date: string;
+  checkInTime: string;
+  checkOutTime: string;
+  durationHoursToday: number;
+  totalHoursWeek: number;
+  totalHoursMonth: number;
+  daysPresentMonth: number;
+  status: 'present' | 'absent' | 'late' | 'excused' | 'not_marked';
+  remarks?: string;
+  checkInMethod?: string;
+  recentHistory?: any[];
+}
+
+export interface StudentTimesheetSummary {
+  totalStudents: number;
+  checkedInToday: number;
+  completedToday: number;
+  absentToday: number;
+  totalCampusHoursThisWeek: number;
+  totalCampusHoursThisMonth: number;
+  avgHoursWeek: number;
 }
 
 export interface ClassSchedule {

@@ -221,6 +221,29 @@ export const StudentLoginView: React.FC<StudentLoginViewProps> = ({
 
         {/* Center Form Section */}
         <div className="my-auto py-6 max-w-md w-full mx-auto">
+          {/* Mascot Daily Check-In Welcome Speech */}
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-orange/10 via-amber-50 to-orange/5 border border-orange-200/80 flex items-center gap-3.5 shadow-sm">
+            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#0B1F4D] to-[#1E3A8A] p-1.5 flex-shrink-0 shadow-md flex items-center justify-center">
+              <img
+                src="/mascot-optimized.png"
+                alt="WeGrow AI Mascot"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/mascot.png';
+                }}
+              />
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
+            </div>
+            <div className="text-left">
+              <div className="text-[11px] font-black uppercase tracking-wider text-orange flex items-center gap-1.5">
+                <span>🤖 Mascot Sparky Says:</span>
+              </div>
+              <p className="text-xs sm:text-[13px] font-bold text-navy leading-snug mt-0.5">
+                &ldquo;Welcome, Young Innovator! Sign in to record your daily attendance check-in &amp; begin today&apos;s AI lab session!&rdquo;
+              </p>
+            </div>
+          </div>
+
           <div className="mb-6 text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-orange-light/60 border border-orange-200/60 text-orange font-black text-xs uppercase tracking-wider mb-2.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>

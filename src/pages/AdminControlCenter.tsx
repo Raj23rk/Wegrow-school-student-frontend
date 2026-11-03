@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../components/ToastContext';
+import { StudentTimesheetItem, StudentTimesheetSummary } from '../types';
+import { AdminAttendanceTimesheet } from '../components/AdminAttendanceTimesheet';
 import {
   Users,
   CalendarCheck,
@@ -30,6 +32,15 @@ import {
   EyeOff,
   Copy,
   Check,
+  Edit3,
+  Filter,
+  LogOut,
+  Calendar,
+  TrendingUp,
+  Zap,
+  ChevronRight,
+  CheckCircle2,
+  UserCheck,
 } from 'lucide-react';
 
 export type AdminTab =
@@ -165,6 +176,30 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
   const [attendanceSuccessMsg, setAttendanceSuccessMsg] = useState('');
   const [dailyStatsSummary, setDailyStatsSummary] = useState<any>(null);
   const [dailyAttendanceHistory, setDailyAttendanceHistory] = useState<any[]>([]);
+
+  // State for Student Check-In / Check-Out Timesheet & Hours Calculation
+  const [attendanceSubTab, setAttendanceSubTab] = useState<'timesheet' | 'batch' | 'analytics'>('timesheet');
+  const [timesheetData, setTimesheetData] = useState<StudentTimesheetItem[]>([]);
+  const [timesheetSummary, setTimesheetSummary] = useState<StudentTimesheetSummary | null>(null);
+  const [timesheetLoading, setTimesheetLoading] = useState(false);
+  const [timesheetSearch, setTimesheetSearch] = useState('');
+  const [timesheetBatch, setTimesheetBatch] = useState('all');
+  const [timesheetDate, setTimesheetDate] = useState(new Date().toISOString().split('T')[0]);
+  const [timesheetStatusFilter, setTimesheetStatusFilter] = useState('all');
+
+  // State for Manual Entry Modal
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [manualStudentId, setManualStudentId] = useState('');
+  const [manualCheckInTime, setManualCheckInTime] = useState('09:15 AM');
+  const [manualCheckOutTime, setManualCheckOutTime] = useState('05:30 PM');
+  const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
+  const [manualStatus, setManualStatus] = useState('present');
+  const [manualRemarks, setManualRemarks] = useState('Verified by campus administration');
+  const [savingManual, setSavingManual] = useState(false);
+
+  // State for Student History Modal
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<any | null>(null);
 
   // State for Assignment Upload
   const [asgTitle, setAsgTitle] = useState('');
@@ -405,6 +440,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
     loadOverview();
     loadStudents();
     loadAttendance();
+    loadTimesheet();
     loadPayments();
     loadTemplates();
     loadQuizzes();
@@ -641,6 +677,125 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadTimesheet = async (
+    date = timesheetDate,
+    batch = timesheetBatch,
+    search = timesheetSearch
+  ) => {
+    try {
+      setTimesheetLoading(true);
+      const res = await api.getStudentsTimesheet({
+        date,
+        batch: batch === 'all' ? undefined : batch,
+        search: search.trim() || undefined,
+      });
+      if (res && res.success) {
+        setTimesheetData(res.timesheet || []);
+        setTimesheetSummary(res.summary || null);
+      }
+    } catch (err) {
+      console.warn('loadTimesheet fallback:', err);
+    } finally {
+      setTimesheetLoading(false);
+    }
+  };
+
+  const handleQuickCheckOut = async (studentId: string, studentName: string) => {
+    try {
+      const res = await api.checkOut({ studentId, date: timesheetDate });
+      if (res && res.success) {
+        toast.success(
+          `Check-out recorded for ${studentName} at ${res.todayStats?.checkOutTime || 'now'} (${res.todayStats?.todayHours || 0} hrs)!`,
+          'Check-Out Recorded'
+        );
+        loadTimesheet();
+        loadAttendance();
+    loadTimesheet();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Check-out failed', 'Error');
+    }
+  };
+
+  const handleSaveManualEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualStudentId) {
+      toast.error('Please select a student from the list', 'Validation Error');
+      return;
+    }
+    setSavingManual(true);
+    try {
+      const res = await api.recordAttendanceManualEntry({
+        studentId: manualStudentId,
+        date: manualDate,
+        checkInTime: manualCheckInTime,
+        checkOutTime: manualCheckOutTime,
+        status: manualStatus,
+        remarks: manualRemarks,
+      });
+      if (res && res.success) {
+        toast.success(res.message || 'Attendance entry updated!', 'Manual Entry Saved');
+        setManualModalOpen(false);
+        loadTimesheet();
+        loadAttendance();
+    loadTimesheet();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Manual entry failed', 'Error');
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
+  const handleExportTimesheetCSV = () => {
+    if (timesheetData.length === 0) {
+      toast.info('No timesheet records available to export.', 'Export Timesheet');
+      return;
+    }
+    const headers = [
+      'Student Name',
+      'Roll Number',
+      'Batch / Course',
+      'Email',
+      'Date',
+      'Check-In Time',
+      'Check-Out Time',
+      'Today Hours',
+      'Total Hours This Week',
+      'Total Hours This Month',
+      'Days Present Month',
+      'Status',
+      'Check-In Method',
+      'Remarks',
+    ];
+    const rows = timesheetData.map((row) => [
+      `"${row.name.replace(/"/g, '""')}"`,
+      `"${row.rollNumber}"`,
+      `"${(row.batch || '').replace(/"/g, '""')}"`,
+      `"${row.email || ''}"`,
+      `"${row.date}"`,
+      `"${row.checkInTime || '—'}"`,
+      `"${row.checkOutTime || '—'}"`,
+      row.durationHoursToday || 0,
+      row.totalHoursWeek || 0,
+      row.totalHoursMonth || 0,
+      row.daysPresentMonth || 0,
+      `"${row.status}"`,
+      `"${row.checkInMethod || 'student_portal'}"`,
+      `"${(row.remarks || '').replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `WeGrow_Attendance_Timesheet_${timesheetDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Attendance timesheet exported to CSV successfully!', 'Export Complete');
   };
 
   const loadPayments = async () => {
@@ -1407,7 +1562,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
           className={`btn ${currentTab === 'attendance' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
           style={{ whiteSpace: 'nowrap' }}
         >
-          <CalendarCheck size={14} /> Batch Attendance
+          <CalendarCheck size={14} /> Attendance & Hours
         </button>
         <button
           onClick={() => switchTab('quizzes')}
@@ -1637,9 +1792,12 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* TAB 2: BATCH-WISE ATTENDANCE MONITORING                  */}
+      {/* TAB 2: STUDENT ATTENDANCE & HOURS MONITORING             */}
       {/* ======================================================== */}
       {currentTab === 'attendance' && (
+        <AdminAttendanceTimesheet onNotificationSent={onNotificationSent} />
+      )}
+      {false && (
         <div className="glass-card" style={{ padding: '28px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
