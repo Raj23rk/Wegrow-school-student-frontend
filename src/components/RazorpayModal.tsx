@@ -345,27 +345,6 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               type="button"
               onClick={() => {
                 setSelectedPlanId('');
-                setAmount(2);
-                setFeeType('Live Payment Verification Test (₹2)');
-              }}
-              style={{
-                padding: '5px 12px',
-                borderRadius: '16px',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                background: amount === 2 ? 'var(--grad-blue)' : 'var(--bg-glass)',
-                color: amount === 2 ? '#ffffff' : 'var(--primary-light)',
-                border: `1px solid ${amount === 2 ? 'var(--primary)' : 'var(--border-glass)'}`,
-              }}
-            >
-              ⚡ ₹2 (Test Live)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedPlanId('');
                 setAmount(10);
                 setFeeType('Live Verification (₹10)');
               }}

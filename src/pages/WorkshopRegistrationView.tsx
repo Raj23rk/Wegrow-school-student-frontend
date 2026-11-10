@@ -50,7 +50,7 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
   const [grade, setGrade] = useState('Class 9 - 10 (High School)');
   const [city, setCity] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentAmount, setPaymentAmount] = useState<number>(2); // Default to ₹2 for testing as requested!
+  const paymentAmount = 99; // Official Workshop Pass Fee (₹99)
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -117,7 +117,7 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
     setLoading(true);
 
     try {
-      // 1. Create Order via Backend with selected paymentAmount (₹2 or ₹99)
+      // 1. Create Order via Backend for Official Workshop Pass (₹99)
       const orderRes = await api.createWorkshopOrder({
         studentName: studentName.trim(),
         email: email.trim().toLowerCase(),
@@ -165,13 +165,10 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
       // 3. Launch Live Razorpay Checkout
       const options = {
         key: orderData.keyId || 'rzp_live_TnMVbzGus2s2u0',
-        amount: orderData.amount || paymentAmount * 100, // 200 paise for ₹2, or 9900 paise for ₹99
+        amount: orderData.amount || paymentAmount * 100, // 9900 paise for ₹99
         currency: orderData.currency || 'INR',
         name: 'WeGrow Skill Campus & B School',
-        description:
-          paymentAmount === 2
-            ? 'WebSpark AI Workshop (Live UPI Test ₹2)'
-            : 'WebSpark AI - AI Website Building Workshop (Fee: ₹99)',
+        description: 'WebSpark AI - AI Website Building Workshop (Fee: ₹99)',
         image: '/wegrow-logo.webp',
         order_id: orderData.orderId,
         handler: async (response: any) => {
@@ -680,119 +677,28 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
                     </div>
                   </div>
 
-                  {/* Fee Amount Selector (Test ₹2 vs Official ₹99) */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                      <span>Select Registration / Payment Option:</span>
-                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
-                        {paymentAmount === 2 ? '🧪 Live UPI Test Active (₹2)' : '🎓 Official Workshop Pass (₹99)'}
-                      </span>
-                    </label>
-
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {/* Option 1: ₹2 Test Mode */}
-                      <button
-                        type="button"
-                        onClick={() => setPaymentAmount(2)}
-                        className={`p-3 rounded-xl border-2 text-left transition cursor-pointer relative ${
-                          paymentAmount === 2
-                            ? 'border-[#F26A1B] bg-orange-50/90 shadow-md ring-2 ring-orange-500/20'
-                            : 'border-slate-200 bg-slate-50 hover:bg-white text-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-orange-600 flex items-center gap-1">
-                            <Zap size={13} className="text-amber-500" /> UPI Test
-                          </span>
-                          <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                            ₹2
-                          </span>
-                        </div>
-                        <div className="text-xl font-black text-slate-900 leading-none">
-                          ₹2 <span className="text-[10px] text-slate-500 font-normal">/ live test</span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 mt-1 leading-tight">
-                          Live Razorpay test. Deducts ₹2 to verify real UPI / Cards.
-                        </p>
-                      </button>
-
-                      {/* Option 2: ₹99 Official Workshop Pass */}
-                      <button
-                        type="button"
-                        onClick={() => setPaymentAmount(99)}
-                        className={`p-3 rounded-xl border-2 text-left transition cursor-pointer relative ${
-                          paymentAmount === 99
-                            ? 'border-[#F26A1B] bg-orange-50/90 shadow-md ring-2 ring-orange-500/20'
-                            : 'border-slate-200 bg-slate-50 hover:bg-white text-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-blue-600 flex items-center gap-1">
-                            <Sparkles size={13} className="text-blue-500" /> Official Pass
-                          </span>
-                          <span className="text-[10px] font-bold text-slate-400 line-through">₹499</span>
-                        </div>
-                        <div className="text-xl font-black text-slate-900 leading-none">
-                          ₹99 <span className="text-[10px] text-emerald-600 font-bold">80% OFF</span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 mt-1 leading-tight">
-                          Full 2-hr workshop seat, certificate &amp; resources.
-                        </p>
-                      </button>
-                    </div>
-                  </div>
-
                   {/* Pricing Breakdown Box - Clean Warm Card */}
                   <div className="bg-[#FFF9F3] border-2 border-[#FFE3C7] rounded-2xl p-4 my-4">
-                    {paymentAmount === 2 ? (
-                      <>
-                        <div className="flex items-center justify-between text-xs text-slate-600 mb-1.5">
-                          <span>Standard Workshop Pass:</span>
-                          <span className="line-through text-slate-400 font-semibold">₹499</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
-                          <span className="flex items-center gap-1 text-amber-800 font-bold">
-                            <Zap size={13} className="text-amber-500" /> Live UPI Test Subsidy:
-                          </span>
-                          <span className="text-emerald-700 font-black">- ₹497</span>
-                        </div>
-                        <div className="h-px bg-[#FED7AA] my-2" />
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-black text-[#0B1F4D] uppercase block">
-                              Total Payable Now (Live Test):
-                            </span>
-                            <span className="text-[10px] text-slate-500">Live Razorpay UPI / Card verification</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-2xl sm:text-3xl font-black text-[#F26A1B]">₹2</span>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between text-xs text-slate-600 mb-1.5">
-                          <span>Standard Workshop Pass:</span>
-                          <span className="line-through text-slate-400 font-semibold">₹499</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
-                          <span>Student Early-Bird Subsidy:</span>
-                          <span className="text-emerald-700 font-black">- ₹400</span>
-                        </div>
-                        <div className="h-px bg-[#FED7AA] my-2" />
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-black text-[#0B1F4D] uppercase block">
-                              Total Payable Now:
-                            </span>
-                            <span className="text-[10px] text-slate-500">2-hour live hands-on + certificate</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-2xl sm:text-3xl font-black text-[#F26A1B]">₹99</span>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                    <div className="flex items-center justify-between text-xs text-slate-600 mb-1.5">
+                      <span>Standard Workshop Pass:</span>
+                      <span className="line-through text-slate-400 font-semibold">₹499</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+                      <span>Student Early-Bird Subsidy:</span>
+                      <span className="text-emerald-700 font-black">- ₹400</span>
+                    </div>
+                    <div className="h-px bg-[#FED7AA] my-2" />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-black text-[#0B1F4D] uppercase block">
+                          Total Payable Now:
+                        </span>
+                        <span className="text-[10px] text-slate-500">2-hour live hands-on + certificate</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-2xl sm:text-3xl font-black text-[#F26A1B]">₹99</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Primary Razorpay Checkout Button */}
@@ -809,11 +715,7 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
                     ) : (
                       <>
                         <ShieldCheck size={20} className="text-yellow-300" />
-                        <span>
-                          {paymentAmount === 2
-                            ? 'Pay ₹2 (Live Test) via Razorpay'
-                            : 'Pay ₹99 & Confirm Workshop Seat'}
-                        </span>
+                        <span>Pay ₹99 &amp; Confirm Workshop Seat</span>
                         <ChevronRight size={18} />
                       </>
                     )}
@@ -854,10 +756,10 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#071738]/95 backdrop-blur-lg border-t border-orange-500/40 p-3 flex items-center justify-between shadow-2xl">
           <div>
             <span className="text-[10px] text-slate-300 font-bold uppercase block leading-none">
-              {paymentAmount === 2 ? 'Live Test Price' : 'Workshop Seat'}
+              Workshop Seat
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-black text-amber-300">₹{paymentAmount}</span>
+              <span className="text-xl font-black text-amber-300">₹99</span>
               <span className="text-[10px] text-slate-400 line-through">₹499</span>
             </div>
           </div>
@@ -866,7 +768,7 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
             onClick={scrollToForm}
             className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
-            <span>{paymentAmount === 2 ? 'Pay ₹2 Test' : 'Book Seat Now'}</span>
+            <span>Book Seat Now</span>
             <ChevronRight size={14} />
           </button>
         </div>

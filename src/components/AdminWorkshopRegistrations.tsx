@@ -439,11 +439,6 @@ export const AdminWorkshopRegistrations: React.FC = () => {
                       <td className="py-3 px-4">
                         <div className="font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
                           <span>₹{reg.amount || 99}</span>
-                          {reg.amount === 2 && (
-                            <span className="text-[9px] font-black text-amber-800 bg-amber-100 dark:bg-amber-900/50 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-300">
-                              TEST ₹2
-                            </span>
-                          )}
                         </div>
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase mt-1 ${
