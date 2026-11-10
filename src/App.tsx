@@ -11,6 +11,7 @@ import { Assignments } from './pages/Assignments';
 import { FeesPayments } from './pages/FeesPayments';
 import { Profile } from './pages/Profile';
 import { StudentAttendance } from './pages/StudentAttendance';
+import { WorkshopRegistrationView } from './pages/WorkshopRegistrationView';
 import { AdminControlCenter, AdminTab } from './pages/AdminControlCenter';
 import { LandingPage } from './landing/LandingPage';
 import { StudentLoginView } from './landing/StudentLoginView';
@@ -48,7 +49,7 @@ export const navigateToRoute = (route: string, replace = false) => {
 
 export function App() {
   const [student, setStudent] = useState<Student | null>(null);
-  const [publicView, setPublicView] = useState<'landing' | 'login'>('landing');
+  const [publicView, setPublicView] = useState<'landing' | 'login' | 'workshop'>('landing');
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -80,6 +81,16 @@ export function App() {
         return;
       }
 
+      if (route === 'workshop' || route === 'webspark' || route === 'register') {
+        if (!studentRef.current) {
+          setPublicView('workshop');
+          return;
+        } else {
+          setCurrentTab('workshop');
+          return;
+        }
+      }
+
       // Check if user is navigating to admin route (/admin, #admin, /admin-*, #admin-*)
       if (route === 'admin' || route.startsWith('admin-') || route === 'admincontrolcenter') {
         const token = getAuthToken();
@@ -94,6 +105,7 @@ export function App() {
         const validAdminTabs: TabType[] = [
           'admin',
           'admin-students',
+          'admin-workshop',
           'admin-attendance',
           'admin-quizzes',
           'admin-assignments',
@@ -115,6 +127,7 @@ export function App() {
       const validStudentTabs: TabType[] = [
         'dashboard',
         'attendance',
+        'workshop',
         'syllabus',
         'videos',
         'quizzes',
@@ -202,7 +215,9 @@ export function App() {
     // If no active session token exists in sessionStorage:
     if (!token) {
       setStudent(null);
-      if (route === 'login' || route === 'admin' || route.startsWith('admin')) {
+      if (route === 'workshop' || route === 'webspark' || route === 'register') {
+        setPublicView('workshop');
+      } else if (route === 'login' || route === 'admin' || route.startsWith('admin')) {
         setPublicView('login');
       } else {
         setPublicView('landing');
@@ -222,6 +237,7 @@ export function App() {
           const validAdminTabs: TabType[] = [
             'admin',
             'admin-students',
+            'admin-workshop',
             'admin-attendance',
             'admin-quizzes',
             'admin-assignments',
@@ -238,6 +254,7 @@ export function App() {
           [
             'dashboard',
             'attendance',
+            'workshop',
             'syllabus',
             'videos',
             'quizzes',
@@ -262,7 +279,9 @@ export function App() {
     } catch {
       clearAuthSession();
       setStudent(null);
-      if (route === 'login' || route === 'admin' || route.startsWith('admin')) {
+      if (route === 'workshop' || route === 'webspark' || route === 'register') {
+        setPublicView('workshop');
+      } else if (route === 'login' || route === 'admin' || route.startsWith('admin')) {
         setPublicView('login');
       } else {
         setPublicView('landing');
@@ -509,12 +528,31 @@ export function App() {
       );
     }
 
+    if (publicView === 'workshop') {
+      return (
+        <WorkshopRegistrationView
+          onBackToHome={() => {
+            setPublicView('landing');
+            navigateToRoute('', true);
+          }}
+          onNavigateLogin={() => {
+            setPublicView('login');
+            navigateToRoute('login');
+          }}
+        />
+      );
+    }
+
     // Default view when running project: Student Landing Page
     return (
       <LandingPage
         onOpenLogin={() => {
           setPublicView('login');
           navigateToRoute('login');
+        }}
+        onOpenWorkshop={() => {
+          setPublicView('workshop');
+          navigateToRoute('workshop');
         }}
       />
     );
@@ -563,6 +601,8 @@ export function App() {
               activeSubTab={
                 currentTab === 'admin-students'
                   ? 'students'
+                  : currentTab === 'admin-workshop'
+                  ? 'workshop'
                   : currentTab === 'admin-templates'
                   ? 'templates'
                   : currentTab === 'admin-attendance'
@@ -599,6 +639,14 @@ export function App() {
             />
           )}
           {currentTab === 'attendance' && <StudentAttendance student={student} />}
+          {currentTab === 'workshop' && (
+            <WorkshopRegistrationView
+              onBackToHome={() => {
+                setCurrentTab('dashboard');
+                navigateToRoute('dashboard');
+              }}
+            />
+          )}
           {currentTab === 'syllabus' && <Syllabus student={student} />}
           {currentTab === 'videos' && <Videos />}
           {currentTab === 'quizzes' && (

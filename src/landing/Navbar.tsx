@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 
 interface NavbarProps {
   onOpenLogin: () => void;
+  onOpenWorkshop?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenWorkshop }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Close drawer on ESC key
@@ -99,11 +100,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin }) => {
             </a>
           </div>
 
-          {/* Right: Student Login Button */}
-          <div className="hidden md:flex items-center">
+          {/* Right: Workshop & Student Login Button */}
+          <div className="hidden md:flex items-center gap-3">
+            {onOpenWorkshop && (
+              <button
+                onClick={onOpenWorkshop}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#FFC21A] to-[#F26A1B] text-[#0B1F4D] font-black text-[13.5px] rounded-xl px-4 py-2.5 shadow-md shadow-orange-300/30 hover:scale-105 active:scale-100 transition-all cursor-pointer border border-yellow-300"
+              >
+                <span>⚡</span>
+                <span>WebSpark AI Workshop (₹99)</span>
+              </button>
+            )}
             <button
               onClick={onOpenLogin}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#F7781F] to-[#E5530A] text-white font-extrabold text-[15px] rounded-xl px-7 py-3 shadow-lg shadow-orange-300/40 hover:shadow-orange-400/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 group cursor-pointer"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#F7781F] to-[#E5530A] text-white font-extrabold text-[15px] rounded-xl px-6 py-2.5 shadow-lg shadow-orange-300/40 hover:shadow-orange-400/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 group cursor-pointer"
             >
               <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7 7z" />
@@ -227,7 +237,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin }) => {
           </nav>
         </div>
 
-        <div className="pt-6 border-t border-orange-100">
+        <div className="pt-6 border-t border-orange-100 space-y-3">
+          {onOpenWorkshop && (
+            <button
+              onClick={() => {
+                setIsDrawerOpen(false);
+                onOpenWorkshop();
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FFC21A] to-[#F26A1B] text-[#0B1F4D] font-black text-sm py-3 rounded-xl shadow-md border border-yellow-300"
+            >
+              <span>⚡</span>
+              <span>WebSpark AI Workshop (₹99)</span>
+            </button>
+          )}
           <button
             onClick={() => {
               setIsDrawerOpen(false);

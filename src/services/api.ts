@@ -232,5 +232,42 @@ export const api = {
     fileUrl?: string;
     pdfName?: string;
   }) => request('/v1/notifications/whatsapp', { method: 'POST', body: JSON.stringify(payload) }),
+
+  // WebSpark AI Workshop (₹99) Endpoints
+  getWorkshopDetails: () => request('/workshop/details'),
+  createWorkshopOrder: (payload: {
+    studentName: string;
+    email: string;
+    phone: string;
+    schoolName: string;
+    grade?: string;
+    city?: string;
+    notes?: string;
+  }) => request('/workshop/create-order', { method: 'POST', body: JSON.stringify(payload) }),
+  verifyWorkshopPayment: (payload: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature?: string;
+    registrationId?: string;
+    studentName?: string;
+    email?: string;
+    phone?: string;
+    schoolName?: string;
+    grade?: string;
+    city?: string;
+  }) => request('/workshop/verify-payment', { method: 'POST', body: JSON.stringify(payload) }),
+  getWorkshopRegistrations: (filters?: { status?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.search) params.append('search', filters.search);
+    const qs = params.toString();
+    return request(`/workshop/registrations${qs ? `?${qs}` : ''}`);
+  },
+  createWorkshopManualRegistration: (payload: any) =>
+    request('/workshop/manual-register', { method: 'POST', body: JSON.stringify(payload) }),
+  markWorkshopPaid: (id: string) =>
+    request(`/workshop/registrations/${id}/mark-paid`, { method: 'PATCH' }),
+  deleteWorkshopRegistration: (id: string) =>
+    request(`/workshop/registrations/${id}`, { method: 'DELETE' }),
 };
 

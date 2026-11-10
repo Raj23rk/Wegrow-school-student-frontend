@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { useToast } from '../components/ToastContext';
 import { StudentTimesheetItem, StudentTimesheetSummary } from '../types';
 import { AdminAttendanceTimesheet } from '../components/AdminAttendanceTimesheet';
+import { AdminWorkshopRegistrations } from '../components/AdminWorkshopRegistrations';
 import {
   Users,
   CalendarCheck,
@@ -46,6 +47,7 @@ import {
 export type AdminTab =
   | 'overview'
   | 'students'
+  | 'workshop'
   | 'attendance'
   | 'quizzes'
   | 'assignments'
@@ -1556,6 +1558,18 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
           style={{ whiteSpace: 'nowrap' }}
         >
           <Users size={14} /> Student Admissions
+        </button>
+        <button
+          onClick={() => switchTab('workshop')}
+          className={`btn ${currentTab === 'workshop' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+          style={{
+            whiteSpace: 'nowrap',
+            background: currentTab === 'workshop' ? 'linear-gradient(135deg, #F26A1B 0%, #E5530A 100%)' : undefined,
+            color: currentTab === 'workshop' ? '#fff' : undefined,
+            borderColor: currentTab === 'workshop' ? '#F26A1B' : 'rgba(242, 106, 27, 0.4)',
+          }}
+        >
+          <Sparkles size={14} style={{ color: currentTab === 'workshop' ? '#fff' : '#FFC21A' }} /> WebSpark AI Workshop (₹99)
         </button>
         <button
           onClick={() => switchTab('attendance')}
@@ -3948,6 +3962,13 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 11: WEBSPARK AI WORKSHOP REGISTRATIONS & PAYMENTS    */}
+      {/* ======================================================== */}
+      {currentTab === 'workshop' && (
+        <AdminWorkshopRegistrations />
       )}
 
       {/* ======================================================== */}

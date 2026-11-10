@@ -21,6 +21,7 @@ import { Student } from '../types';
 export type TabType =
   | 'dashboard'
   | 'attendance'
+  | 'workshop'
   | 'syllabus'
   | 'videos'
   | 'quizzes'
@@ -30,6 +31,7 @@ export type TabType =
   | 'profile'
   | 'admin'
   | 'admin-students'
+  | 'admin-workshop'
   | 'admin-attendance'
   | 'admin-quizzes'
   | 'admin-assignments'
@@ -70,6 +72,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'admin-students',
       label: 'Student Admissions',
       icon: Users,
+    },
+    {
+      id: 'admin-workshop',
+      label: 'AI Workshop (₹99)',
+      icon: Sparkles,
     },
     {
       id: 'admin-attendance',
@@ -123,6 +130,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'attendance',
       label: 'Daily Attendance',
       icon: CalendarCheck,
+    },
+    {
+      id: 'workshop',
+      label: 'AI Workshop (₹99)',
+      icon: Sparkles,
     },
     {
       id: 'syllabus',

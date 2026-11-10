@@ -238,3 +238,38 @@ export interface PaymentItem {
   receiptNumber: string;
   date: string;
 }
+
+export interface WorkshopRegistration {
+  _id?: string;
+  registrationId: string;
+  workshopName: string;
+  studentName: string;
+  email: string;
+  phone: string;
+  whatsapp?: string;
+  schoolName: string;
+  grade: string;
+  city: string;
+  amount: number;
+  currency: string;
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  paymentMethod?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  receiptNumber?: string;
+  notes?: string;
+  registeredAt: string;
+  paidAt?: string;
+}
+
+export interface WorkshopStats {
+  totalRegistrations: number;
+  paidRegistrations: number;
+  pendingRegistrations: number;
+  totalRevenue: number;
+  todayRegistrations: number;
+  workshopDate: string;
+  workshopTime: string;
+  ticketPrice: number;
+}
