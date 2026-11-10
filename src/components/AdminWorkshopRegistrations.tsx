@@ -743,3 +743,5 @@ export const AdminWorkshopRegistrations: React.FC = () => {
   );
 };
 
+export default AdminWorkshopRegistrations;
+

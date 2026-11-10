@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { useToast } from '../components/ToastContext';
 import { StudentTimesheetItem, StudentTimesheetSummary } from '../types';
 import { AdminAttendanceTimesheet } from '../components/AdminAttendanceTimesheet';
-import { AdminWorkshopRegistrations } from '../components/AdminWorkshopRegistrations';
+import AdminWorkshopRegistrations from '../components/AdminWorkshopRegistrations';
 import {
   Users,
   CalendarCheck,
