@@ -233,7 +233,7 @@ export const api = {
     pdfName?: string;
   }) => request('/v1/notifications/whatsapp', { method: 'POST', body: JSON.stringify(payload) }),
 
-  // WebSpark AI Workshop (₹99) Endpoints
+  // WebSpark AI Workshop Endpoints
   getWorkshopDetails: () => request('/workshop/details'),
   createWorkshopOrder: (payload: {
     studentName: string;
@@ -243,6 +243,7 @@ export const api = {
     grade?: string;
     city?: string;
     notes?: string;
+    amount?: number;
   }) => request('/workshop/create-order', { method: 'POST', body: JSON.stringify(payload) }),
   verifyWorkshopPayment: (payload: {
     razorpay_order_id: string;
@@ -255,6 +256,7 @@ export const api = {
     schoolName?: string;
     grade?: string;
     city?: string;
+    amount?: number;
   }) => request('/workshop/verify-payment', { method: 'POST', body: JSON.stringify(payload) }),
   getWorkshopRegistrations: (filters?: { status?: string; search?: string }) => {
     const params = new URLSearchParams();
