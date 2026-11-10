@@ -742,3 +742,4 @@ export const AdminWorkshopRegistrations: React.FC = () => {
     </div>
   );
 };
+
