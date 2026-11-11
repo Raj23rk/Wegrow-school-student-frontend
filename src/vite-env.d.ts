@@ -10,3 +10,8 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  fbq?: (...args: any[]) => void;
+  _fbq?: any;
+}

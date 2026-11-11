@@ -133,6 +133,15 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
         throw new Error(orderRes?.message || 'Failed to initiate workshop order.');
       }
 
+      // Meta Pixel: Track Checkout Initiation
+      if (typeof window.fbq === 'function') {
+        window.fbq('track', 'InitiateCheckout', {
+          content_name: 'WebSpark AI Workshop',
+          value: paymentAmount,
+          currency: 'INR',
+        });
+      }
+
       const orderData = orderRes.data;
 
       // 2. If Simulation or Razorpay SDK not loaded on window
@@ -155,6 +164,14 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
         if (verifyRes && verifyRes.success) {
           setConfirmedTicket(verifyRes.data);
           fireCelebration();
+          // Meta Pixel: Track Purchase Conversion
+          if (typeof window.fbq === 'function') {
+            window.fbq('track', 'Purchase', {
+              content_name: 'WebSpark AI Workshop',
+              value: paymentAmount,
+              currency: 'INR',
+            });
+          }
         } else {
           throw new Error(verifyRes?.message || 'Verification failed');
         }
@@ -191,6 +208,14 @@ export const WorkshopRegistrationView: React.FC<WorkshopRegistrationViewProps> =
             if (verifyRes && verifyRes.success) {
               setConfirmedTicket(verifyRes.data);
               fireCelebration();
+              // Meta Pixel: Track Purchase Conversion
+              if (typeof window.fbq === 'function') {
+                window.fbq('track', 'Purchase', {
+                  content_name: 'WebSpark AI Workshop',
+                  value: paymentAmount,
+                  currency: 'INR',
+                });
+              }
             } else {
               setErrorMsg(verifyRes?.message || 'Payment verification failed. Please contact helpline.');
             }
