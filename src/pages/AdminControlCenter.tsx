@@ -17,6 +17,7 @@ import {
   Send,
   Download,
   CheckCircle,
+  HelpCircle,
   AlertCircle,
   Clock,
   ShieldCheck,
@@ -218,6 +219,8 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
   const [vidDuration, setVidDuration] = useState('45 mins');
   const [vidUrl, setVidUrl] = useState('');
   const [vidTeacher, setVidTeacher] = useState('Prof. Vikram Rao');
+  const [vidDesc, setVidDesc] = useState('');
+  const [vidThumbnail, setVidThumbnail] = useState('');
   const [vidSuccessMsg, setVidSuccessMsg] = useState('');
 
   // State for Daily Notes Upload
@@ -454,29 +457,65 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
   const loadQuizzes = async () => {
     try {
       const res = await api.getQuizzes();
-      if (res && Array.isArray(res.data)) setQuizzesList(res.data);
-    } catch {}
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.quizzes)
+        ? res.quizzes
+        : Array.isArray(res)
+        ? res
+        : [];
+      setQuizzesList(list);
+    } catch (err) {
+      console.warn('loadQuizzes error:', err);
+    }
   };
 
   const loadAssignments = async () => {
     try {
       const res = await api.getAssignments();
-      if (res && Array.isArray(res.data)) setAssignmentsList(res.data);
-    } catch {}
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.assignments)
+        ? res.assignments
+        : Array.isArray(res)
+        ? res
+        : [];
+      setAssignmentsList(list);
+    } catch (err) {
+      console.warn('loadAssignments error:', err);
+    }
   };
 
   const loadVideos = async () => {
     try {
       const res = await api.getVideos();
-      if (res && Array.isArray(res.data)) setVideosList(res.data);
-    } catch {}
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.videos)
+        ? res.videos
+        : Array.isArray(res)
+        ? res
+        : [];
+      setVideosList(list);
+    } catch (err) {
+      console.warn('loadVideos error:', err);
+    }
   };
 
   const loadMaterials = async () => {
     try {
       const res = await api.getMaterials();
-      if (res && Array.isArray(res.data)) setMaterialsList(res.data);
-    } catch {}
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.materials)
+        ? res.materials
+        : Array.isArray(res)
+        ? res
+        : [];
+      setMaterialsList(list);
+    } catch (err) {
+      console.warn('loadMaterials error:', err);
+    }
   };
 
   const handleCreateQuiz = async (e: React.FormEvent) => {
@@ -502,6 +541,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
       setQuizTitle('');
       setQuizDesc('');
       loadQuizzes();
+      loadOverview();
     } catch (err: any) {
       toast.error(err.message || 'Failed to publish quiz', 'Publish Failed');
     } finally {
@@ -520,6 +560,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
           await api.deleteQuiz(id);
           toast.success('Quiz assessment deleted successfully', 'Quiz Deleted');
           loadQuizzes();
+          loadOverview();
         } catch (err: any) {
           toast.error(err.message || 'Failed to delete quiz', 'Delete Failed');
         }
@@ -538,8 +579,28 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
           await api.deleteAssignment(id);
           toast.success('Assignment deleted successfully', 'Assignment Deleted');
           loadAssignments();
+          loadOverview();
         } catch (err: any) {
           toast.error(err.message || 'Failed to delete assignment', 'Delete Failed');
+        }
+      },
+    });
+  };
+
+  const handleDeleteVideo = (id: string) => {
+    confirmModal({
+      title: 'Delete Video Lecture',
+      message: 'Are you sure you want to delete this video lecture? This action cannot be undone.',
+      confirmText: 'Delete Video',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await api.deleteVideo(id);
+          toast.success('Video lecture deleted successfully', 'Video Deleted');
+          loadVideos();
+          loadOverview();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete video', 'Delete Failed');
         }
       },
     });
@@ -548,7 +609,8 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
   const loadOverview = async () => {
     try {
       const res = await api.getAdminOverview();
-      if (res.success) setOverview(res.data);
+      if (res && res.data) setOverview(res.data);
+      else if (res && typeof res === 'object') setOverview(res);
     } catch (err) {
       console.warn('Overview fallback');
     }
@@ -898,12 +960,16 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
         duration: vidDuration,
         videoUrl: vidUrl,
         teacher: vidTeacher,
+        description: vidDesc || `${vidSubject} interactive lecture recording`,
+        thumbnailUrl: vidThumbnail || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80',
       });
       const msg = res.message || 'Video lecture published successfully!';
       setVidSuccessMsg(msg);
       toast.success(msg, 'Video Published');
       setVidTitle('');
       setVidUrl('');
+      setVidDesc('');
+      setVidThumbnail('');
       loadVideos();
       loadOverview();
     } catch (err: any) {
@@ -1689,6 +1755,65 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
             </div>
           </div>
 
+          {/* Course Content & Learning Library Counters */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '28px' }}>
+            <div
+              className="glass-card glass-card-interactive"
+              onClick={() => switchTab('quizzes')}
+              style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+            >
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <HelpCircle size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Active Quizzes</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{overview?.totalQuizzes ?? quizzesList.length}</div>
+              </div>
+            </div>
+
+            <div
+              className="glass-card glass-card-interactive"
+              onClick={() => switchTab('assignments')}
+              style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+            >
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(242, 106, 27, 0.15)', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ClipboardList size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Assignments</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{overview?.totalAssignments ?? assignmentsList.length}</div>
+              </div>
+            </div>
+
+            <div
+              className="glass-card glass-card-interactive"
+              onClick={() => switchTab('videos')}
+              style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+            >
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Video size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Video Lectures</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{overview?.totalVideos ?? videosList.length}</div>
+              </div>
+            </div>
+
+            <div
+              className="glass-card glass-card-interactive"
+              onClick={() => switchTab('notes')}
+              style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+            >
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BookOpen size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Daily Notes</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{overview?.totalNotes ?? materialsList.length}</div>
+              </div>
+            </div>
+          </div>
+
           {/* Quick Upload Action Cards */}
           <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: 'var(--text-primary)' }}>
             Quick Administrative Operations
@@ -1709,6 +1834,24 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
                 Record daily presence by cohort and automatically trigger WhatsApp alerts to parents of absent students.
+              </p>
+            </div>
+
+            <div
+              className="glass-card glass-card-interactive"
+              onClick={() => switchTab('quizzes')}
+              style={{ padding: '20px', cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <HelpCircle size={20} />
+                </div>
+                <h4 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                  Upload &amp; Publish Quiz
+                </h4>
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                Create interactive multiple-choice assessments with automated scoring, time limit, and instant student grading.
               </p>
             </div>
 
@@ -2480,22 +2623,32 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
 
           {/* Active Assignments Catalog */}
           <div className="glass-card" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: 'var(--text-primary)' }}>
-              Currently Active Assignments ({assignmentsList.length})
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  Currently Active Assignments ({assignmentsList.length})
+                </h3>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                  Assignments and capstone projects synced with student dashboard.
+                </p>
+              </div>
+              <button onClick={loadAssignments} className="btn btn-secondary btn-sm">
+                <RefreshCw size={13} /> Refresh
+              </button>
+            </div>
             {assignmentsList.length === 0 ? (
               <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <ClipboardList size={36} style={{ margin: '0 auto 10px', opacity: 0.6, color: 'var(--primary-light)' }} />
                 <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>No active assignments published yet (0)</div>
                 <p style={{ fontSize: '13px', margin: '4px 0 0', color: 'var(--text-secondary)' }}>
-                  Use the upload form above to create and publish homework or capstone projects to students.
+                  Use the upload form on the left to create and publish homework or capstone projects to students.
                 </p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {assignmentsList.map((a: any) => (
                   <div
-                    key={a._id}
+                    key={a._id || a.id}
                     style={{
                       padding: '16px',
                       borderRadius: '12px',
@@ -2512,7 +2665,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                           Due: {a.dueDate}
                         </span>
                         <button
-                          onClick={() => handleDeleteAssignment(a._id)}
+                          onClick={() => handleDeleteAssignment(a._id || a.id)}
                           style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
                           title="Delete Assignment"
                         >
@@ -2620,6 +2773,39 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="input-label">Lecture Description &amp; Overview</label>
+                <textarea
+                  rows={3}
+                  value={vidDesc}
+                  onChange={(e) => setVidDesc(e.target.value)}
+                  placeholder="Summary of topics covered, lab exercises, and practical machine learning concepts..."
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Thumbnail Image URL (Optional)</label>
+                <input
+                  type="url"
+                  value={vidThumbnail}
+                  onChange={(e) => setVidThumbnail(e.target.value)}
+                  placeholder="https://... (leave blank for high-res AI default cover)"
+                  className="input-field"
+                />
+                {vidThumbnail && (
+                  <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img
+                      src={vidThumbnail}
+                      alt="Thumbnail Preview"
+                      style={{ width: '80px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-glass)' }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Thumbnail preview</span>
+                  </div>
+                )}
+              </div>
+
               <button type="submit" className="btn btn-primary" style={{ padding: '12px' }}>
                 <Plus size={16} /> Publish Video to Student Library
               </button>
@@ -2628,22 +2814,32 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
 
           {/* Videos Catalog Preview */}
           <div className="glass-card" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: 'var(--text-primary)' }}>
-              Published Video Library ({videosList.length})
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  Published Video Library ({videosList.length})
+                </h3>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                  Live recorded masterclasses synced with student portal video player.
+                </p>
+              </div>
+              <button onClick={loadVideos} className="btn btn-secondary btn-sm">
+                <RefreshCw size={13} /> Refresh
+              </button>
+            </div>
             {videosList.length === 0 ? (
               <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <Video size={36} style={{ margin: '0 auto 10px', opacity: 0.6, color: 'var(--primary-light)' }} />
                 <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>No video lectures published yet (0)</div>
                 <p style={{ fontSize: '13px', margin: '4px 0 0', color: 'var(--text-secondary)' }}>
-                  Use the upload form above to add recorded classes and AI masterclasses for enrolled students.
+                  Use the upload form on the left to add recorded classes and AI masterclasses for enrolled students.
                 </p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '480px', overflowY: 'auto' }}>
                 {videosList.map((v: any) => (
                   <div
-                    key={v._id}
+                    key={v._id || v.id}
                     style={{
                       display: 'flex',
                       gap: '14px',
@@ -2657,17 +2853,30 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
                     <img
                       src={v.thumbnailUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80'}
                       alt={v.title}
-                      style={{ width: '90px', height: '60px', objectFit: 'cover', borderRadius: '8px' }}
+                      style={{ width: '90px', height: '60px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }}
                     />
-                    <div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--primary-light)' }}>
                         {v.subject} &bull; {v.duration || '45 mins'}
                       </span>
-                      <h5 style={{ fontSize: '14px', fontWeight: 700, margin: '2px 0', color: 'var(--text-primary)' }}>
+                      <h5 style={{ fontSize: '14px', fontWeight: 700, margin: '2px 0', color: 'var(--text-primary)', wordBreak: 'break-word' }}>
                         {v.title}
                       </h5>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>By {v.teacher}</div>
+                      {v.description && (
+                        <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {v.description}
+                        </p>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVideo(v._id || v.id)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px', marginLeft: 'auto' }}
+                      title="Delete Video Lecture"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -2767,9 +2976,19 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
 
           {/* Published Notes Catalog */}
           <div className="glass-card" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: 'var(--text-primary)' }}>
-              Published Daily Notes Catalog ({materialsList.length})
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  Published Daily Notes Catalog ({materialsList.length})
+                </h3>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                  Lecture notes and study cheat sheets synced with student dashboard.
+                </p>
+              </div>
+              <button onClick={loadMaterials} className="btn btn-secondary btn-sm">
+                <RefreshCw size={13} /> Refresh
+              </button>
+            </div>
             {materialsList.length === 0 ? (
               <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <BookOpen size={36} style={{ margin: '0 auto 10px', opacity: 0.6, color: 'var(--primary-light)' }} />
@@ -2782,7 +3001,7 @@ export const AdminControlCenter: React.FC<AdminControlCenterProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '480px', overflowY: 'auto' }}>
                 {materialsList.map((m: any) => (
                   <div
-                    key={m._id}
+                    key={m._id || m.id}
                     style={{
                       padding: '14px',
                       borderRadius: '12px',

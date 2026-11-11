@@ -106,6 +106,17 @@ export const api = {
   // Videos
   getVideos: (subject?: string) =>
     request(`/videos${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`),
+  createVideo: (payload: {
+    title: string;
+    subject: string;
+    duration: string;
+    videoUrl: string;
+    teacher: string;
+    description?: string;
+    thumbnailUrl?: string;
+  }) => request('/videos', { method: 'POST', body: JSON.stringify(payload) }),
+  deleteVideo: (id: string) =>
+    request(`/videos/${id}`, { method: 'DELETE' }),
 
   // Quizzes & Tasks
   getQuizzes: () => request('/quizzes'),
@@ -123,9 +134,19 @@ export const api = {
     request(`/materials${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`),
   createMaterial: (payload: any) =>
     request('/materials', { method: 'POST', body: JSON.stringify(payload) }),
+  deleteMaterial: (id: string) =>
+    request(`/materials/${id}`, { method: 'DELETE' }),
 
   // Assignments
   getAssignments: () => request('/assignments'),
+  createAssignment: (payload: {
+    title: string;
+    subject: string;
+    grade?: string;
+    dueDate: string;
+    totalMarks: number;
+    description: string;
+  }) => request('/assignments', { method: 'POST', body: JSON.stringify(payload) }),
   submitAssignment: (id: string, payload: { content: string; attachmentUrl?: string }) =>
     request(`/assignments/${id}/submit`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteAssignment: (id: string) =>
@@ -194,10 +215,6 @@ export const api = {
     feeType: string;
     referenceNumber?: string;
   }) => request('/admin/record-payment', { method: 'POST', body: JSON.stringify(payload) }),
-  createAssignment: (payload: any) =>
-    request('/assignments', { method: 'POST', body: JSON.stringify(payload) }),
-  createVideo: (payload: any) =>
-    request('/videos', { method: 'POST', body: JSON.stringify(payload) }),
 
   // Student Admissions & Management
   getNextEnrollmentNumber: () =>

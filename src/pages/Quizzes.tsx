@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Check,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
@@ -28,6 +29,7 @@ interface QuizzesProps {
 
 export const Quizzes: React.FC<QuizzesProps> = ({ student, onNotificationSent }) => {
   const { toast } = useToast();
+  const isAdmin = student?.role === 'admin' || student?.email?.includes('kumar') || student?.email?.includes('admin');
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [activeQuiz, setActiveQuiz] = useState<any | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
@@ -86,7 +88,14 @@ export const Quizzes: React.FC<QuizzesProps> = ({ student, onNotificationSent })
     try {
       setLoading(true);
       const res = await api.getQuizzes();
-      setQuizzes(res.data);
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.quizzes)
+        ? res.quizzes
+        : Array.isArray(res)
+        ? res
+        : [];
+      setQuizzes(list);
     } catch (err) {
       console.error('Failed to load quizzes:', err);
     } finally {
@@ -182,6 +191,17 @@ export const Quizzes: React.FC<QuizzesProps> = ({ student, onNotificationSent })
       fetchQuizzes();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create quiz', 'Creation Failed');
+    }
+  };
+
+  const handleDeleteQuiz = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this quiz evaluation?')) return;
+    try {
+      await api.deleteQuiz(id);
+      toast.success('Quiz evaluation deleted successfully', 'Quiz Deleted');
+      fetchQuizzes();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete quiz', 'Delete Failed');
     }
   };
 
@@ -522,10 +542,10 @@ export const Quizzes: React.FC<QuizzesProps> = ({ student, onNotificationSent })
           </p>
         </div>
 
-        {student?.role === 'admin' && (
+        {isAdmin && (
           <button
             id="btn-admin-upload-task"
-            className="btn btn-secondary"
+            className="btn btn-primary"
             onClick={() => setShowAdminModal(true)}
           >
             <PlusCircle size={16} /> Admin Upload Questions
@@ -615,6 +635,17 @@ export const Quizzes: React.FC<QuizzesProps> = ({ student, onNotificationSent })
                 >
                   Start Online Task <ChevronRight size={16} />
                 </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', padding: '10px 14px' }}
+                    onClick={() => handleDeleteQuiz(quiz._id)}
+                    title="Delete Quiz Evaluation"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))}

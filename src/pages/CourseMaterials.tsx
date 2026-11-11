@@ -41,7 +41,13 @@ export const CourseMaterials: React.FC<CourseMaterialsProps> = ({ student }) => 
     try {
       setLoading(true);
       const res = await api.getMaterials(subject);
-      const list = Array.isArray(res.data) ? res.data : [];
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.materials)
+        ? res.materials
+        : Array.isArray(res)
+        ? res
+        : [];
       setMaterials(list);
     } catch (err) {
       console.error('Failed to load materials:', err);

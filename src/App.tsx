@@ -648,12 +648,12 @@ export function App() {
             />
           )}
           {currentTab === 'syllabus' && <Syllabus student={student} />}
-          {currentTab === 'videos' && <Videos />}
+          {currentTab === 'videos' && <Videos student={student} />}
           {currentTab === 'quizzes' && (
             <Quizzes student={student} onNotificationSent={handleNotificationSent} />
           )}
           {currentTab === 'materials' && <CourseMaterials student={student} />}
-          {currentTab === 'assignments' && <Assignments />}
+          {currentTab === 'assignments' && <Assignments student={student} />}
           {currentTab === 'payments' && (
             <FeesPayments student={student} onRefreshStudent={checkSession} />
           )}

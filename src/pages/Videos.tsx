@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Clock, Eye, User, Sparkles, Filter, X, ChevronRight } from 'lucide-react';
+import { Play, Clock, Eye, User, Sparkles, Filter, X, ChevronRight, PlusCircle, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
-import { VideoLecture } from '../types';
+import { VideoLecture, Student } from '../types';
+import { useToast } from '../components/ToastContext';
 
-export const Videos: React.FC = () => {
+interface VideosProps {
+  student?: Student | null;
+}
+
+export const Videos: React.FC<VideosProps> = ({ student }) => {
+  const { toast } = useToast();
+  const isAdmin = student?.role === 'admin' || student?.email?.includes('kumar') || student?.email?.includes('admin');
+
   const [videos, setVideos] = useState<VideoLecture[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
   const [activeVideo, setActiveVideo] = useState<VideoLecture | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Admin upload state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [vidTitle, setVidTitle] = useState('');
+  const [vidSubject, setVidSubject] = useState('Machine Learning');
+  const [vidDuration, setVidDuration] = useState('45 mins');
+  const [vidUrl, setVidUrl] = useState('');
+  const [vidTeacher, setVidTeacher] = useState('Lead AI Researcher');
+  const [vidDesc, setVidDesc] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     fetchVideos(selectedSubject);
@@ -17,14 +35,66 @@ export const Videos: React.FC = () => {
     try {
       setLoading(true);
       const res = await api.getVideos(subject);
-      setVideos(res.data);
-      if (!activeVideo && res.data.length > 0) {
-        setActiveVideo(res.data[0]);
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.videos)
+        ? res.videos
+        : Array.isArray(res)
+        ? res
+        : [];
+      setVideos(list);
+      if (!activeVideo && list.length > 0) {
+        setActiveVideo(list[0]);
       }
     } catch (err) {
       console.error('Failed to load videos:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vidTitle.trim() || !vidUrl.trim()) {
+      toast.warning('Video Title and URL are required', 'Validation Error');
+      return;
+    }
+    try {
+      setIsUploading(true);
+      const res = await api.createVideo({
+        title: vidTitle.trim(),
+        subject: vidSubject,
+        duration: vidDuration.trim() || '45 mins',
+        videoUrl: vidUrl.trim(),
+        teacher: vidTeacher.trim() || 'Lead AI Researcher',
+        description: vidDesc.trim() || vidTitle.trim(),
+      });
+
+      toast.success(res.message || 'Video lecture published successfully!', 'Video Published');
+      setShowUploadModal(false);
+      setVidTitle('');
+      setVidUrl('');
+      setVidDesc('');
+      fetchVideos(selectedSubject);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload video lecture', 'Upload Failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteVideo = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this video lecture?')) return;
+    try {
+      await api.deleteVideo(id);
+      toast.success('Video lecture deleted successfully', 'Video Deleted');
+      if (activeVideo?._id === id) {
+        setActiveVideo(null);
+      }
+      fetchVideos(selectedSubject);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete video', 'Delete Failed');
     }
   };
 
@@ -40,27 +110,39 @@ export const Videos: React.FC = () => {
           </p>
         </div>
 
-        {/* Filter Pills */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {subjects.map((sub) => (
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {isAdmin && (
             <button
-              key={sub}
-              onClick={() => setSelectedSubject(sub)}
-              style={{
-                padding: '7px 16px',
-                borderRadius: '999px',
-                fontSize: '13px',
-                fontWeight: 600,
-                background: selectedSubject === sub ? 'var(--grad-brand)' : 'var(--bg-glass)',
-                color: selectedSubject === sub ? '#ffffff' : 'var(--text-secondary)',
-                border: `1px solid ${selectedSubject === sub ? 'transparent' : 'var(--border-glass)'}`,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
+              id="btn-admin-upload-video"
+              className="btn btn-primary btn-sm"
+              onClick={() => setShowUploadModal(true)}
             >
-              {sub}
+              <PlusCircle size={16} /> Admin Upload Video
             </button>
-          ))}
+          )}
+
+          {/* Filter Pills */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {subjects.map((sub) => (
+              <button
+                key={sub}
+                onClick={() => setSelectedSubject(sub)}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '999px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  background: selectedSubject === sub ? 'var(--grad-brand)' : 'var(--bg-glass)',
+                  color: selectedSubject === sub ? '#ffffff' : 'var(--text-secondary)',
+                  border: `1px solid ${selectedSubject === sub ? 'transparent' : 'var(--border-glass)'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {sub}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -237,8 +319,20 @@ export const Videos: React.FC = () => {
                 <h4 style={{ fontSize: '15px', fontWeight: 700, lineHeight: 1.3, marginBottom: '8px', color: 'var(--text-primary)' }}>
                   {vid.title}
                 </h4>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Instructor: <strong>{vid.teacher}</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    Instructor: <strong>{vid.teacher}</strong>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteVideo(vid._id, e)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                      title="Delete Video"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -246,6 +340,117 @@ export const Videos: React.FC = () => {
         })}
       </div>
       </>
+      )}
+
+      {/* Admin Upload Video Lecture Modal */}
+      {showUploadModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content" style={{ maxWidth: '640px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  Admin: Upload Video Lecture
+                </h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                  Publish recorded classes, technical tutorials, and AI masterclasses for students.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUploadModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateVideo} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label className="input-label">Lecture Video Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={vidTitle}
+                  onChange={(e) => setVidTitle(e.target.value)}
+                  placeholder="e.g. Masterclass: Fine-Tuning Llama 3 with LoRA and QLoRA"
+                  className="input-field"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="input-label">Discipline / Subject</label>
+                  <select
+                    value={vidSubject}
+                    onChange={(e) => setVidSubject(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="Machine Learning">Machine Learning</option>
+                    <option value="Deep Learning & CV">Deep Learning &amp; CV</option>
+                    <option value="Generative AI & LLMs">Generative AI &amp; LLMs</option>
+                    <option value="Python & Data Science">Python &amp; Data Science</option>
+                    <option value="No-Code AI">No-Code AI</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="input-label">Video Duration</label>
+                  <input
+                    type="text"
+                    required
+                    value={vidDuration}
+                    onChange={(e) => setVidDuration(e.target.value)}
+                    placeholder="e.g. 52 mins"
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="input-label">Video Stream / Embed URL (YouTube, Vimeo, Cloud MP4) *</label>
+                <input
+                  type="url"
+                  required
+                  value={vidUrl}
+                  onChange={(e) => setVidUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=... or direct MP4 / Cloud URL"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Faculty / Instructor Lead</label>
+                <input
+                  type="text"
+                  required
+                  value={vidTeacher}
+                  onChange={(e) => setVidTeacher(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Lecture Summary / Key Topics (Optional)</label>
+                <textarea
+                  rows={3}
+                  value={vidDesc}
+                  onChange={(e) => setVidDesc(e.target.value)}
+                  placeholder="Summary of algorithms, PyTorch code, or architecture discussed..."
+                  className="input-field"
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowUploadModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={isUploading}>
+                  {isUploading ? 'Publishing...' : 'Publish Video Lecture'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
